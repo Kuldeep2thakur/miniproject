@@ -77,6 +77,8 @@ import {
   CommandList
 } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
+import { FirestorePermissionError } from "@/firebase/errors";
+import { errorEmitter } from "@/firebase/error-emitter";
 
 const NewTripFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -108,6 +110,7 @@ export default function NewTripPage() {
   } = useUser();
   const router = useRouter();
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const form = useForm < z.infer < typeof NewTripFormSchema >> ({
     resolver: zodResolver(NewTripFormSchema),
@@ -135,22 +138,31 @@ export default function NewTripPage() {
       endDate: format(data.endDate, "MMM dd, yyyy"),
     };
 
-    try {
-      const tripsCollection = collection(firestore, 'trips');
-      await addDoc(tripsCollection, newTripData);
-      toast({
-        title: "Trip Created!",
-        description: "Your new trip has been successfully created.",
-      });
-      router.push("/dashboard");
-    } catch (error) {
-      console.error("Error creating trip:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "There was a problem creating your trip. Please try again.",
-      });
-    }
+    const tripsCollection = collection(firestore, 'trips');
+    
+    addDoc(tripsCollection, newTripData)
+      .then((docRef) => {
+        toast({
+          title: "Trip Created!",
+          description: "Your new trip has been successfully created.",
+        });
+        router.push("/dashboard");
+      })
+      .catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: tripsCollection.path,
+          operation: 'create',
+          requestResourceData: newTripData,
+        });
+
+        errorEmitter.emit('permission-error', permissionError);
+
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "There was a problem creating your trip. Please try again.",
+        });
+    });
   };
 
   if (isUserLoading) {
