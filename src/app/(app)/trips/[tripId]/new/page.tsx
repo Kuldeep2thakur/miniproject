@@ -26,7 +26,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useUser } from '@/firebase';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, serverTimestamp } from 'firebase/firestore';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CalendarIcon, Paperclip } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -43,11 +43,23 @@ const NewEntrySchema = z.object({
   media: z.instanceof(FileList).optional(),
 });
 
+// Helper function to convert a file to a data URL
+const fileToDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
+
 export default function NewEntryPage() {
   const { tripId } = useParams();
   const router = useRouter();
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof NewEntrySchema>>({
     resolver: zodResolver(NewEntrySchema),
@@ -67,15 +79,23 @@ export default function NewEntryPage() {
   const onSubmit = async (data: z.infer<typeof NewEntrySchema>) => {
     if (!user || !firestore || !tripId) return;
 
+    setIsSubmitting(true);
+
     const entriesCollection = collection(firestore, 'trips', tripId as string, 'entries');
     
-    // In a real app, you would upload files to a service like Firebase Storage
-    // and get back the URLs. For now, we'll just store the filenames as placeholders.
-    const mediaFileNames = data.media ? Array.from(data.media).map(file => file.name) : [];
+    let mediaDataUrls: string[] = [];
+    if (data.media && data.media.length > 0) {
+        // Convert all selected files to data URLs
+        mediaDataUrls = await Promise.all(
+            Array.from(data.media).map(file => fileToDataURL(file))
+        );
+    }
 
     const newEntryData = {
-      ...data,
-      media: mediaFileNames, // Storing filenames as a placeholder
+      title: data.title,
+      content: data.content,
+      visitedAt: data.visitedAt,
+      media: mediaDataUrls, // Store the array of data URLs
       tripId: tripId,
       authorId: user.uid,
       createdAt: serverTimestamp(),
@@ -184,22 +204,24 @@ export default function NewEntryPage() {
                <FormField
                 control={form.control}
                 name="media"
-                render={({ field }) => (
+                render={({ field: { onChange, ...fieldProps } }) => (
                   <FormItem>
                     <FormLabel>Attach Photos & Vlogs</FormLabel>
                     <FormControl>
                         <div className="relative">
                             <Paperclip className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                             <Input 
+                                {...fieldProps}
                                 type="file" 
                                 multiple
+                                accept="image/*,video/*"
                                 className="pl-10"
-                                onChange={(e) => field.onChange(e.target.files)}
+                                onChange={(e) => onChange(e.target.files)}
                             />
                         </div>
                     </FormControl>
                     <FormDescription>
-                      You can select multiple files.
+                      You can select multiple image or video files.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -207,8 +229,8 @@ export default function NewEntryPage() {
               />
 
 
-              <Button type="submit" disabled={form.formState.isSubmitting} className="w-full">
-                {form.formState.isSubmitting ? 'Saving...' : 'Save Entry'}
+              <Button type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting ? 'Saving...' : 'Save Entry'}
               </Button>
             </form>
           </Form>

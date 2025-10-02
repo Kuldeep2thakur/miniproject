@@ -9,7 +9,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Edit, Globe, Lock, PlusCircle, Users, File } from 'lucide-react';
+import { ArrowLeft, Calendar, Edit, Globe, Lock, PlusCircle, Users, File, Video } from 'lucide-react';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -216,10 +216,9 @@ export default function TripPage() {
                                                 <div>
                                                     <h4 className="font-semibold text-sm mb-2">Media</h4>
                                                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                                        {entry.media.map((mediaFile, index) => {
-                                                            const isImage = /\.(jpg|jpeg|png|gif)$/i.test(mediaFile);
-                                                            // In a real app, you'd have actual URLs from a storage service
-                                                            const mediaUrl = `https://picsum.photos/seed/${entry.id}-${index}/200/200`;
+                                                        {entry.media.map((mediaUrl, index) => {
+                                                            const isImage = mediaUrl.startsWith('data:image');
+                                                            const isVideo = mediaUrl.startsWith('data:video');
 
                                                             return (
                                                                 <div key={index} className="aspect-square rounded-md overflow-hidden bg-muted flex items-center justify-center">
@@ -232,10 +231,15 @@ export default function TripPage() {
                                                                             className="object-cover w-full h-full"
                                                                             data-ai-hint="travel photo"
                                                                         />
+                                                                    ) : isVideo ? (
+                                                                        <div className="text-center p-2">
+                                                                            <Video className="h-8 w-8 mx-auto text-muted-foreground" />
+                                                                             <p className="text-xs text-muted-foreground truncate mt-1">Video</p>
+                                                                        </div>
                                                                     ) : (
                                                                         <div className="text-center p-2">
                                                                             <File className="h-8 w-8 mx-auto text-muted-foreground" />
-                                                                            <p className="text-xs text-muted-foreground truncate mt-1">{mediaFile}</p>
+                                                                            <p className="text-xs text-muted-foreground truncate mt-1">File</p>
                                                                         </div>
                                                                     )}
                                                                 </div>
