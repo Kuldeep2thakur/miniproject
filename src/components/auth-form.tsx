@@ -10,9 +10,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useAuth, initiateEmailSignIn, initiateEmailSignUp, initiateGoogleSignIn } from "@/firebase";
+import { useAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "@/firebase";
 import { useEffect, useState } from "react";
 import { useUser } from "@/firebase/provider";
+import { FirebaseError } from "firebase/app";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -68,19 +69,53 @@ export function AuthForm({ formType }: AuthFormProps) {
     return null;
   }
 
-  const onSubmit = (values: FormSchema) => {
-    if (isLogin) {
-      const { email, password } = values as z.infer<typeof loginSchema>;
-      initiateEmailSignIn(auth, email, password);
-    } else {
-      const { email, password } = values as z.infer<typeof signupSchema>;
-      // We are not storing the full name in this version
-      initiateEmailSignUp(auth, email, password);
+  const onSubmit = async (values: FormSchema) => {
+    try {
+      if (isLogin) {
+        const { email, password } = values as z.infer<typeof loginSchema>;
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        const { email, password } = values as z.infer<typeof signupSchema>;
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
+      router.push('/dashboard');
+    } catch (error) {
+      if (error instanceof FirebaseError) {
+        if (error.code === 'auth/email-already-in-use') {
+          form.setError('email', {
+            type: 'manual',
+            message: 'This email address is already in use. Please log in.',
+          });
+        } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+          form.setError('root', {
+            type: 'manual',
+            message: 'Invalid email or password. Please try again.',
+          });
+        } else {
+           form.setError('root', {
+            type: 'manual',
+            message: 'An unexpected error occurred. Please try again.',
+          });
+          console.error(error);
+        }
+      }
     }
   };
 
-  const handleGoogleSignIn = () => {
-    initiateGoogleSignIn(auth);
+  const handleGoogleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+        await signInWithPopup(auth, provider);
+        router.push('/dashboard');
+    } catch (error) {
+        if (error instanceof FirebaseError && error.code !== 'auth/popup-closed-by-user') {
+            form.setError('root', {
+                type: 'manual',
+                message: 'Failed to sign in with Google. Please try again.',
+            });
+            console.error(error);
+        }
+    }
   };
 
   return (
@@ -145,6 +180,9 @@ export function AuthForm({ formType }: AuthFormProps) {
                   </FormItem>
                 )}
               />
+              {form.formState.errors.root && (
+                <FormMessage>{form.formState.errors.root.message}</FormMessage>
+              )}
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? 'Processing...' : (isLogin ? 'Login' : 'Create account')}
               </Button>

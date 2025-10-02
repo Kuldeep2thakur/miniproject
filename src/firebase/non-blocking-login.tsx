@@ -1,59 +1,213 @@
-'use client';
-import {
-  Auth, // Import Auth type for type hinting
-  signInAnonymously,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
-  FirebaseError,
-  // Assume getAuth and app are initialized elsewhere
-} from 'firebase/auth';
+"use client";
 
-/** Initiate anonymous sign-in (non-blocking). */
-export function initiateAnonymousSignIn(authInstance: Auth): void {
-  // CRITICAL: Call signInAnonymously directly. Do NOT use 'await signInAnonymously(...)'.
-  signInAnonymously(authInstance).catch((error: FirebaseError) => {
-    // This is a non-critical error, so we can ignore it.
-    // The onAuthStateChanged listener will handle the case where the user is not signed in.
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import Link from "next/link";
+import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "@/firebase";
+import { useEffect, useState } from "react";
+import { useUser } from "@/firebase/provider";
+import { FirebaseError } from "firebase/app";
+
+const loginSchema = z.object({
+  email: z.string().email({ message: "Invalid email address." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+});
+
+const signupSchema = z.object({
+  fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
+  email: z.string().email({ message: "Invalid email address." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+});
+
+
+type AuthFormProps = {
+  formType: 'login' | 'signup';
+};
+
+const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px" {...props}>
+        <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+        <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+        <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+        <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C42.022,35.242,44,30.038,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+    </svg>
+);
+
+
+export function AuthForm({ formType }: AuthFormProps) {
+  const [isMounted, setIsMounted] = useState(false);
+  const isLogin = formType === 'login';
+  const router = useRouter();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+
+  const formSchema = isLogin ? loginSchema : signupSchema;
+  type FormSchema = z.infer<typeof formSchema>;
+  const form = useForm<FormSchema>({
+    resolver: zodResolver(formSchema),
+    defaultValues: isLogin ? { email: '', password: '' } : { fullName: '', email: '', password: '' },
   });
-  // Code continues immediately. Auth state change is handled by onAuthStateChanged listener.
-}
 
-/** Initiate email/password sign-up (non-blocking). */
-export function initiateEmailSignUp(authInstance: Auth, email: string, password: string): void {
-  // CRITICAL: Call createUserWithEmailAndPassword directly. Do NOT use 'await createUserWithEmailAndPassword(...)'.
-  createUserWithEmailAndPassword(authInstance, email, password).catch((error: FirebaseError) => {
-    // This is a non-critical error, so we can ignore it.
-    // The onAuthStateChanged listener will handle the case where the user is not signed in.
-    console.error("Sign-up failed", error.message);
-  });
-  // Code continues immediately. Auth state change is handled by onAuthStateChanged listener.
-}
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
-/** Initiate email/password sign-in (non-blocking). */
-export function initiateEmailSignIn(authInstance: Auth, email: string, password: string): void {
-  // CRITICAL: Call signInWithEmailAndPassword directly. Do NOT use 'await signInWithEmailAndPassword(...)'.
-  signInWithEmailAndPassword(authInstance, email, password).catch((error: FirebaseError) => {
-    // This is a non-critical error, so we can ignore it.
-    // The onAuthStateChanged listener will handle the case where the user is not signed in.
-    console.error("Sign-in failed", error.message);
-  });
-  // Code continues immediately. Auth state change is handled by onAuthStateChanged listener.
-}
-
-/** Initiate Google sign-in (non-blocking). */
-export function initiateGoogleSignIn(authInstance: Auth): void {
-  const provider = new GoogleAuthProvider();
-  // CRITICAL: Call signInWithPopup directly. Do NOT use 'await signInWithPopup(...)'.
-  signInWithPopup(authInstance, provider).catch((error: FirebaseError) => {
-    // The 'auth/popup-closed-by-user' error is a common, user-driven event.
-    // We catch it here to prevent it from being thrown as an unhandled rejection,
-    // which would trigger Next.js's error overlay. We don't need to show this
-    // specific error to the user.
-    if (error.code !== 'auth/popup-closed-by-user') {
-      console.error("Google sign-in failed", error.message);
+  useEffect(() => {
+    if (user && !isUserLoading) {
+      router.push('/dashboard');
     }
-  });
-  // Code continues immediately. Auth state change is handled by onAuthStateChanged listener.
+  }, [user, isUserLoading, router]);
+
+  if (!isMounted) {
+    return null;
+  }
+
+  const onSubmit = async (values: FormSchema) => {
+    try {
+      if (isLogin) {
+        const { email, password } = values as z.infer<typeof loginSchema>;
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        const { email, password } = values as z.infer<typeof signupSchema>;
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
+      router.push('/dashboard');
+    } catch (error) {
+      if (error instanceof FirebaseError) {
+        if (error.code === 'auth/email-already-in-use') {
+          form.setError('email', {
+            type: 'manual',
+            message: 'This email address is already in use. Please log in.',
+          });
+        } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+          form.setError('root', {
+            type: 'manual',
+            message: 'Invalid email or password. Please try again.',
+          });
+        } else {
+           form.setError('root', {
+            type: 'manual',
+            message: 'An unexpected error occurred. Please try again.',
+          });
+          console.error(error);
+        }
+      }
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+        await signInWithPopup(auth, provider);
+        router.push('/dashboard');
+    } catch (error) {
+        if (error instanceof FirebaseError && error.code !== 'auth/popup-closed-by-user') {
+            form.setError('root', {
+                type: 'manual',
+                message: 'Failed to sign in with Google. Please try again.',
+            });
+            console.error(error);
+        }
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+      <Card className="mx-auto max-w-sm w-full shadow-2xl">
+        <CardHeader>
+          <CardTitle className="text-2xl font-headline">
+            {isLogin ? 'Welcome Back' : 'Create an Account'}
+          </CardTitle>
+          <CardDescription>
+            {isLogin ? "Enter your email below to login to your account" : "Enter your details to create an account with WanderLust"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {!isLogin && (
+                <FormField
+                  control={form.control}
+                  name="fullName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Asha Traveler" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="asha@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center">
+                        <FormLabel>Password</FormLabel>
+                        {isLogin && (
+                            <Link href="#" className="ml-auto inline-block text-sm underline">
+                            Forgot your password?
+                            </Link>
+                        )}
+                    </div>
+                    <FormControl>
+                      <Input type="password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {form.formState.errors.root && (
+                <FormMessage>{form.formState.errors.root.message}</FormMessage>
+              )}
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? 'Processing...' : (isLogin ? 'Login' : 'Create account')}
+              </Button>
+            </form>
+          </Form>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+            </div>
+          </div>
+          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
+            <GoogleIcon className="mr-2" />
+            {isLogin ? 'Login with Google' : 'Sign up with Google'}
+          </Button>
+        </CardContent>
+        <CardFooter className="text-center text-sm">
+          {isLogin ? "Don't have an account?" : "Already have an account?"}
+          <Link href={isLogin ? "/signup" : "/login"} className="underline ml-1">
+            {isLogin ? 'Sign up' : 'Login'}
+          </Link>
+        </CardFooter>
+      </Card>
+    </div>
+  );
 }
