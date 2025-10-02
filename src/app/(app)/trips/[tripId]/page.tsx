@@ -13,6 +13,7 @@ import { ArrowLeft, Calendar, Edit, Globe, Lock, PlusCircle, Users } from 'lucid
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useEffect } from 'react';
 
 const getInitials = (name: string) => name ? name.split(' ').map(n => n[0]).join('') : '';
 
@@ -250,4 +251,3 @@ export default function TripPage() {
         </div>
     );
 }
-
