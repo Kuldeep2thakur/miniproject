@@ -11,7 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth, initiateEmailSignIn, initiateEmailSignUp } from "@/firebase";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useUser } from "@/firebase/provider";
 
 const loginSchema = z.object({
@@ -41,6 +41,7 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 
 export function AuthForm({ formType }: AuthFormProps) {
+  const [isMounted, setIsMounted] = useState(false);
   const isLogin = formType === 'login';
   const router = useRouter();
   const auth = useAuth();
@@ -54,10 +55,18 @@ export function AuthForm({ formType }: AuthFormProps) {
   });
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (user && !isUserLoading) {
       router.push('/dashboard');
     }
   }, [user, isUserLoading, router]);
+
+  if (!isMounted) {
+    return null;
+  }
 
   const onSubmit = (values: FormSchema) => {
     if (isLogin) {
