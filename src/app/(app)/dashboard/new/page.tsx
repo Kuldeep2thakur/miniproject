@@ -76,7 +76,7 @@ import {
   CommandItem,
   CommandList
 } from "@/components/ui/command";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 const NewTripFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -125,7 +125,7 @@ export default function NewTripPage() {
   }, [user, isUserLoading, router]);
 
   const onSubmit = async (data: z.infer < typeof NewTripFormSchema > ) => {
-    if (!user) return;
+    if (!user || !firestore) return;
 
     const newTripData = {
       ...data,

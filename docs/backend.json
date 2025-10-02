@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -284,7 +285,7 @@
         }
       },
       {
-        "path": "/users/{userId}/trips/{tripId}",
+        "path": "/trips/{tripId}",
         "definition": {
           "entityName": "Trip",
           "schema": {
@@ -293,10 +294,6 @@
           "description": "Stores trip information owned by a specific user. Includes denormalized 'visibility' and 'sharedWith' for authorization independence.",
           "params": [
             {
-              "name": "userId",
-              "description": "The unique identifier of the user (auth.uid) who owns the trip."
-            },
-            {
               "name": "tripId",
               "description": "The unique identifier of the trip."
             }
@@ -304,7 +301,7 @@
         }
       },
       {
-        "path": "/users/{userId}/trips/{tripId}/entries/{entryId}",
+        "path": "/trips/{tripId}/entries/{entryId}",
         "definition": {
           "entityName": "Entry",
           "schema": {
@@ -312,10 +309,6 @@
           },
           "description": "Stores trip entries for a specific trip. Authorization is based on the parent trip's ownership and visibility.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who owns the trip."
-            },
             {
               "name": "tripId",
               "description": "The unique identifier of the trip."
@@ -360,6 +353,7 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability for the WanderLust application. We leverage path-based ownership for user-related data and denormalization where needed to avoid complex security rules involving `get()` calls. The core entities (Users, Trips, Entries, Routes, and Comments) are organized in a way that mirrors their relationships while optimizing for security and query performance.\n\n*   **/users/{userId}**: Stores user profiles.  Security rules will ensure that only the authenticated user can read and write their own profile.\n*   **/users/{userId}/trips/{tripId}**:  This path enforces strict ownership for trips. Only the owner (identified by `userId`) can create, update, or delete trips under their profile.  The `trip` documents include a `visibility` field, allowing the trip owner to set the trip as 'private', 'public', or 'shared'. The `sharedWith` field contains an array of user IDs that the trip is shared with. Security rules will allow reading based on these parameters.\n*   **/users/{userId}/trips/{tripId}/entries/{entryId}**:  This continues the ownership pattern, with entries nested under trips.  Security rules will be based on the parent trip's ownership and visibility settings. This structure is optimized for querying all entries for a specific trip.\n*   **/routes/{routeId}**: Stores route data. Route documents include a tripId field referencing the parent trip.  This segregation allows routes to be queried independently if needed (e.g., for route analysis across trips), while security rules will ensure that only the trip owner can create, update, or delete routes associated with their trips.\n*   **/comments/{commentId}**: Stores comments on entries. The comment document includes an `entryId` to reference the parent entry and the `authorId` to reference the author of the comment. Segregating comments into a top-level collection simplifies querying comments across all entries and trips, as well as enforcing security rules based on entry visibility.\n\nThis design achieves Authorization Independence by embedding all necessary authorization data (`visibility`, `sharedWith`, `ownerId`) directly into the `Trip` document. This eliminates the need for `get()` calls in security rules to check the parent document's access controls. QAPs are supported through structural segregation and the membership model: public trips are readable by anyone, private trips are readable by the owner, and shared trips are readable by users included in the `sharedWith` array."
+    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability for the WanderLust application. We leverage path-based ownership for user-related data and denormalization where needed to avoid complex security rules involving `get()` calls. The core entities (Users, Trips, Entries, Routes, and Comments) are organized in a way that mirrors their relationships while optimizing for security and query performance.\n\n*   **/users/{userId}**: Stores user profiles.  Security rules will ensure that only the authenticated user can read and write their own profile.\n*   **/trips/{tripId}**:  This path enforces strict ownership for trips. Only the owner (identified by `userId`) can create, update, or delete trips under their profile.  The `trip` documents include a `visibility` field, allowing the trip owner to set the trip as 'private', 'public', or 'shared'. The `sharedWith` field contains an array of user IDs that the trip is shared with. Security rules will allow reading based on these parameters.\n*   **/trips/{tripId}/entries/{entryId}**:  This continues the ownership pattern, with entries nested under trips.  Security rules will be based on the parent trip's ownership and visibility settings. This structure is optimized for querying all entries for a specific trip.\n*   **/routes/{routeId}**: Stores route data. Route documents include a tripId field referencing the parent trip.  This segregation allows routes to be queried independently if needed (e.g., for route analysis across trips), while security rules will ensure that only the trip owner can create, update, or delete routes associated with their trips.\n*   **/comments/{commentId}**: Stores comments on entries. The comment document includes an `entryId` to reference the parent entry and the `authorId` to reference the author of the comment. Segregating comments into a top-level collection simplifies querying comments across all entries and trips, as well as enforcing security rules based on entry visibility.\n\nThis design achieves Authorization Independence by embedding all necessary authorization data (`visibility`, `sharedWith`, `ownerId`) directly into the `Trip` document. This eliminates the need for `get()` calls in security rules to check the parent document's access controls. QAPs are supported through structural segregation and the membership model: public trips are readable by anyone, private trips are readable by the owner, and shared trips are readable by users included in the `sharedWith` array."
   }
 }
+
