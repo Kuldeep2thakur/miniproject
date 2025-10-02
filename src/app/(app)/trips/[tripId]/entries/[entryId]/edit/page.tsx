@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, doc, serverTimestamp } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CalendarIcon, Paperclip } from 'lucide-react';
@@ -142,7 +142,7 @@ export default function EditEntryPage() {
                             <Skeleton className="h-4 w-16" />
                             <Skeleton className="h-10 w-full" />
                         </div>
-                        <div className="space-y-2">
+                         <div className="space-y-2">
                             <Skeleton className="h-4 w-16" />
                             <Skeleton className="h-10 w-full" />
                         </div>
@@ -268,7 +268,7 @@ export default function EditEntryPage() {
                         </div>
                     </FormControl>
                     <FormDescription>
-                      Select new files to add to this entry.
+                      Select new files to add to this entry. Existing media will be kept.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

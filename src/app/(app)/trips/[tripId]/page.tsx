@@ -146,6 +146,7 @@ export default function TripPage() {
     }
     
     const isOwner = user?.uid === trip.ownerId;
+    const canAddEntry = isOwner || (trip.visibility === 'shared' && trip.sharedWith?.includes(user?.uid || ''));
 
     return (
         <div className="min-h-screen">
@@ -168,11 +169,13 @@ export default function TripPage() {
                         {trip.startDate} - {trip.endDate}
                     </p>
                 </div>
-                <div className="absolute top-4 right-4 flex gap-2">
-                    <Button variant="secondary" size="sm">
-                        <Edit className="mr-2 h-4 w-4" /> Edit Trip
-                    </Button>
-                </div>
+                {isOwner && (
+                    <div className="absolute top-4 right-4 flex gap-2">
+                        <Button variant="secondary" size="sm">
+                            <Edit className="mr-2 h-4 w-4" /> Edit Trip
+                        </Button>
+                    </div>
+                )}
                  <div className="absolute top-4 left-4">
                     <Button variant="secondary" size="sm" asChild>
                         <Link href="/dashboard"><ArrowLeft className="mr-2 h-4 w-4" />Back</Link>
@@ -184,7 +187,7 @@ export default function TripPage() {
                     <div className="md:col-span-2">
                         <div className="flex justify-between items-center mb-6">
                              <h2 className="text-2xl font-bold font-headline">Trip Diary</h2>
-                             {(isOwner || (trip.visibility === 'shared' && trip.sharedWith?.includes(user!.uid))) && (
+                             {canAddEntry && (
                                 <Button asChild>
                                     <Link href={`/trips/${tripId}/new`}>
                                         <PlusCircle className="mr-2 h-4 w-4" />
@@ -204,6 +207,8 @@ export default function TripPage() {
                                      const visitedDate = entry.visitedAt instanceof Date 
                                         ? entry.visitedAt
                                         : (entry.visitedAt as any)?.toDate?.() || new Date(entry.visitedAt as string);
+                                    
+                                    const canEditEntry = isOwner || (entry.authorId === user?.uid);
 
                                     return (
                                         <div key={entry.id} className="bg-card p-4 rounded-lg shadow-sm border space-y-4">
@@ -213,12 +218,14 @@ export default function TripPage() {
                                                         <h3 className="text-lg font-semibold">{entry.title}</h3>
                                                         <p className="text-sm text-muted-foreground mb-2">{format(visitedDate, 'PPP')}</p>
                                                     </div>
-                                                     <Button asChild variant="outline" size="sm">
-                                                        <Link href={`/trips/${tripId}/entries/${entry.id}/edit`}>
-                                                            <Edit className="h-3 w-3 mr-2" />
-                                                            Edit
-                                                        </Link>
-                                                    </Button>
+                                                     {canEditEntry && (
+                                                        <Button asChild variant="outline" size="sm">
+                                                            <Link href={`/trips/${tripId}/entries/${entry.id}/edit`}>
+                                                                <Edit className="h-3 w-3 mr-2" />
+                                                                Edit
+                                                            </Link>
+                                                        </Button>
+                                                     )}
                                                 </div>
                                                 <p className="text-sm whitespace-pre-wrap">{entry.content}</p>
                                             </div>
@@ -242,10 +249,10 @@ export default function TripPage() {
                                                                             data-ai-hint="travel photo"
                                                                         />
                                                                     ) : isVideo ? (
-                                                                        <div className="text-center p-2">
-                                                                            <Video className="h-8 w-8 mx-auto text-muted-foreground" />
-                                                                             <p className="text-xs text-muted-foreground truncate mt-1">Video</p>
-                                                                        </div>
+                                                                        <a href={mediaUrl} target="_blank" rel="noopener noreferrer" className="text-center p-2 group">
+                                                                            <Video className="h-8 w-8 mx-auto text-muted-foreground group-hover:text-primary transition-colors" />
+                                                                             <p className="text-xs text-muted-foreground truncate mt-1 group-hover:text-primary transition-colors">Play Video</p>
+                                                                        </a>
                                                                     ) : (
                                                                         <div className="text-center p-2">
                                                                             <File className="h-8 w-8 mx-auto text-muted-foreground" />

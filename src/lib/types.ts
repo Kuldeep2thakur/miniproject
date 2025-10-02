@@ -27,4 +27,5 @@ export type Entry = {
     visitedAt: Timestamp | Date | string;
     createdAt?: Timestamp | Date | string;
     media?: string[];
+    authorId?: string;
 }
