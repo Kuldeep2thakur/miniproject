@@ -10,10 +10,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "@/firebase";
+import { useAuth, useFirestore, useUser, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, updateProfile } from "@/firebase";
 import { useEffect, useState } from "react";
-import { useUser } from "@/firebase/provider";
 import { FirebaseError } from "firebase/app";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -46,6 +46,7 @@ export function AuthForm({ formType }: AuthFormProps) {
   const isLogin = formType === 'login';
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
 
   const formSchema = isLogin ? loginSchema : signupSchema;
@@ -70,13 +71,26 @@ export function AuthForm({ formType }: AuthFormProps) {
   }
 
   const onSubmit = async (values: FormSchema) => {
+    if (!auth || !firestore) return;
     try {
       if (isLogin) {
         const { email, password } = values as z.infer<typeof loginSchema>;
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        const { email, password } = values as z.infer<typeof signupSchema>;
-        await createUserWithEmailAndPassword(auth, email, password);
+        const { email, password, fullName } = values as z.infer<typeof signupSchema>;
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        await updateProfile(userCredential.user, { displayName: fullName });
+
+        const userDocRef = doc(firestore, 'users', userCredential.user.uid);
+        await setDoc(userDocRef, {
+            displayName: fullName,
+            email: userCredential.user.email,
+            photoURL: userCredential.user.photoURL,
+            createdAt: serverTimestamp(),
+            privacyDefault: 'private',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        });
       }
       router.push('/dashboard');
     } catch (error) {
@@ -103,6 +117,7 @@ export function AuthForm({ formType }: AuthFormProps) {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!auth) return;
     const provider = new GoogleAuthProvider();
     try {
         await signInWithPopup(auth, provider);

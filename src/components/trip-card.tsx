@@ -1,4 +1,4 @@
-import type { Trip, User } from '@/lib/types';
+import type { Trip, User as FirestoreUser } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
@@ -29,7 +29,7 @@ const VisibilityIcon = ({ visibility }: { visibility: Trip['visibility'] }) => {
   }
 };
 
-const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
+const getInitials = (name: string) => name ? name.split(' ').map(n => n[0]).join('') : '';
 
 function SharedWithAvatars({ trip }: { trip: Trip }) {
     const firestore = useFirestore();
@@ -39,7 +39,7 @@ function SharedWithAvatars({ trip }: { trip: Trip }) {
         return query(collection(firestore, 'users'), where('__name__', 'in', trip.sharedWith), limit(3));
     }, [firestore, trip.sharedWith]);
 
-    const { data: sharedUsers } = useCollection<User>(sharedWithQuery);
+    const { data: sharedUsers } = useCollection<FirestoreUser>(sharedWithQuery);
 
     if (!sharedUsers || sharedUsers.length === 0) {
         return null;
@@ -49,17 +49,13 @@ function SharedWithAvatars({ trip }: { trip: Trip }) {
         <div className="flex -space-x-2">
             <TooltipProvider>
                 {sharedUsers.map(user => {
-                    // This is a temporary way to get an avatar. 
-                    // In a real app, the user object would have a photoURL.
-                    const avatarId = `avatar-${(parseInt(user.id, 36) % 3) + 1}`;
-                    const avatar = PlaceHolderImages.find(p => p.id === avatarId);
-                    const userName = user.name || user.id;
+                    const userName = user.displayName || user.email || user.id;
 
                     return (
                         <Tooltip key={user.id}>
                             <TooltipTrigger asChild>
                                 <Avatar className="border-2 border-card h-8 w-8">
-                                    {avatar && <AvatarImage src={avatar.imageUrl} alt={userName} />}
+                                    {user.photoURL && <AvatarImage src={user.photoURL} alt={userName} />}
                                     <AvatarFallback>{getInitials(userName)}</AvatarFallback>
                                 </Avatar>
                             </TooltipTrigger>

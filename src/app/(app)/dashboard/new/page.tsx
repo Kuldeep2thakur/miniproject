@@ -10,8 +10,8 @@ import {
   useEffect
 } from "react";
 import {
-  addDocumentNonBlocking
-} from "@/firebase/non-blocking-updates";
+  addDoc
+} from "firebase/firestore";
 import {
   z
 } from "zod";
@@ -76,6 +76,7 @@ import {
   CommandItem,
   CommandList
 } from "@/components/ui/command";
+import { toast } from "@/hooks/use-toast";
 
 const NewTripFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -134,9 +135,22 @@ export default function NewTripPage() {
       endDate: format(data.endDate, "MMM dd, yyyy"),
     };
 
-    const tripsCollection = collection(firestore, 'trips');
-    await addDocumentNonBlocking(tripsCollection, newTripData);
-    router.push("/dashboard");
+    try {
+      const tripsCollection = collection(firestore, 'trips');
+      await addDoc(tripsCollection, newTripData);
+      toast({
+        title: "Trip Created!",
+        description: "Your new trip has been successfully created.",
+      });
+      router.push("/dashboard");
+    } catch (error) {
+      console.error("Error creating trip:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "There was a problem creating your trip. Please try again.",
+      });
+    }
   };
 
   if (isUserLoading) {

@@ -24,8 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
-import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { doc } from 'firebase/firestore';
+import { updateDoc, doc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CalendarIcon, Paperclip } from 'lucide-react';
@@ -35,6 +34,7 @@ import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Entry } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from '@/hooks/use-toast';
 
 const EditEntrySchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -103,27 +103,42 @@ export default function EditEntryPage() {
 
     setIsSubmitting(true);
 
-    let newMediaDataUrls: string[] = [];
-    if (data.media && data.media.length > 0) {
-        newMediaDataUrls = await Promise.all(
-            Array.from(data.media).map(file => fileToDataURL(file))
-        );
+    try {
+        let newMediaDataUrls: string[] = [];
+        if (data.media && data.media.length > 0) {
+            newMediaDataUrls = await Promise.all(
+                Array.from(data.media).map(file => fileToDataURL(file))
+            );
+        }
+
+        const existingMedia = entry.media || [];
+        const combinedMedia = [...existingMedia, ...newMediaDataUrls];
+
+        const updatedEntryData = {
+          title: data.title,
+          content: data.content,
+          visitedAt: data.visitedAt,
+          media: combinedMedia,
+        };
+        
+        await updateDoc(entryRef, updatedEntryData);
+        
+        toast({
+            title: "Entry Updated",
+            description: "Your diary entry has been successfully saved.",
+        });
+        router.push(`/trips/${tripId}`);
+
+    } catch (error) {
+        console.error("Error updating entry:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "There was a problem saving your entry. Please try again.",
+        });
+    } finally {
+        setIsSubmitting(false);
     }
-
-    const existingMedia = entry.media || [];
-    const combinedMedia = [...existingMedia, ...newMediaDataUrls];
-
-    const updatedEntryData = {
-      title: data.title,
-      content: data.content,
-      visitedAt: data.visitedAt,
-      media: combinedMedia,
-      // We don't update createdAt or authorId
-    };
-    
-    await updateDocumentNonBlocking(entryRef, updatedEntryData);
-    
-    router.push(`/trips/${tripId}`);
   };
   
     if (isUserLoading || isLoadingEntry) {

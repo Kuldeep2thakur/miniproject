@@ -24,8 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useUser } from '@/firebase';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CalendarIcon, Paperclip } from 'lucide-react';
@@ -33,6 +32,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
+import { toast } from '@/hooks/use-toast';
 
 const NewEntrySchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -81,29 +81,44 @@ export default function NewEntryPage() {
 
     setIsSubmitting(true);
 
-    const entriesCollection = collection(firestore, 'trips', tripId as string, 'entries');
-    
-    let mediaDataUrls: string[] = [];
-    if (data.media && data.media.length > 0) {
-        // Convert all selected files to data URLs
-        mediaDataUrls = await Promise.all(
-            Array.from(data.media).map(file => fileToDataURL(file))
-        );
-    }
+    try {
+        const entriesCollection = collection(firestore, 'trips', tripId as string, 'entries');
+        
+        let mediaDataUrls: string[] = [];
+        if (data.media && data.media.length > 0) {
+            mediaDataUrls = await Promise.all(
+                Array.from(data.media).map(file => fileToDataURL(file))
+            );
+        }
 
-    const newEntryData = {
-      title: data.title,
-      content: data.content,
-      visitedAt: data.visitedAt,
-      media: mediaDataUrls, // Store the array of data URLs
-      tripId: tripId,
-      authorId: user.uid,
-      createdAt: serverTimestamp(),
-    };
-    
-    await addDocumentNonBlocking(entriesCollection, newEntryData);
-    
-    router.push(`/trips/${tripId}`);
+        const newEntryData = {
+          title: data.title,
+          content: data.content,
+          visitedAt: data.visitedAt,
+          media: mediaDataUrls,
+          tripId: tripId,
+          authorId: user.uid,
+          createdAt: serverTimestamp(),
+        };
+        
+        await addDoc(entriesCollection, newEntryData);
+
+        toast({
+          title: "Entry Saved",
+          description: "Your new diary entry has been successfully saved.",
+        });
+        
+        router.push(`/trips/${tripId}`);
+    } catch (error) {
+        console.error("Error creating entry:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "There was a problem creating your entry. Please try again.",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
   
     if (isUserLoading) {
@@ -204,16 +219,15 @@ export default function NewEntryPage() {
                <FormField
                 control={form.control}
                 name="media"
-                render={({ field: { onChange, name, ref } }) => (
+                render={({ field: { onChange, ...rest } }) => (
                   <FormItem>
                     <FormLabel>Attach Photos & Vlogs</FormLabel>
                     <FormControl>
                         <div className="relative">
                             <Paperclip className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                            <Input 
-                                onBlur={form.control.register('media').onBlur}
-                                name={name}
-                                ref={ref}
+                            <Input
+                                {...rest}
+                                value={undefined}
                                 type="file" 
                                 multiple
                                 accept="image/*,video/*"

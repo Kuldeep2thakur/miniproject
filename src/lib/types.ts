@@ -15,8 +15,10 @@ export type Trip = {
 
 export type User = {
   id: string;
-  name: string;
-  avatarId: string;
+  displayName: string;
+  email: string;
+  photoURL: string | null;
+  createdAt: Timestamp;
 };
 
 export type Entry = {
