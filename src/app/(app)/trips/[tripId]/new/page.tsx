@@ -13,6 +13,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -27,7 +28,7 @@ import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, serverTimestamp } from 'firebase/firestore';
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CalendarIcon } from 'lucide-react';
+import { ArrowLeft, CalendarIcon, Paperclip } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -39,6 +40,7 @@ const NewEntrySchema = z.object({
   visitedAt: z.date({
     required_error: "A date for this entry is required.",
   }),
+  media: z.instanceof(FileList).optional(),
 });
 
 export default function NewEntryPage() {
@@ -67,8 +69,13 @@ export default function NewEntryPage() {
 
     const entriesCollection = collection(firestore, 'trips', tripId as string, 'entries');
     
+    // In a real app, you would upload files to a service like Firebase Storage
+    // and get back the URLs. For now, we'll just store the filenames as placeholders.
+    const mediaFileNames = data.media ? Array.from(data.media).map(file => file.name) : [];
+
     const newEntryData = {
       ...data,
+      media: mediaFileNames, // Storing filenames as a placeholder
       tripId: tripId,
       authorId: user.uid,
       createdAt: serverTimestamp(),
@@ -173,6 +180,32 @@ export default function NewEntryPage() {
                   </FormItem>
                 )}
               />
+
+               <FormField
+                control={form.control}
+                name="media"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Attach Photos & Vlogs</FormLabel>
+                    <FormControl>
+                        <div className="relative">
+                            <Paperclip className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input 
+                                type="file" 
+                                multiple
+                                className="pl-10"
+                                onChange={(e) => field.onChange(e.target.files)}
+                            />
+                        </div>
+                    </FormControl>
+                    <FormDescription>
+                      You can select multiple files.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
 
               <Button type="submit" disabled={form.formState.isSubmitting} className="w-full">
                 {form.formState.isSubmitting ? 'Saving...' : 'Save Entry'}

@@ -26,4 +26,5 @@ export type Entry = {
     content: string;
     visitedAt: Timestamp | Date | string;
     createdAt?: Timestamp | Date | string;
+    media?: string[];
 }
