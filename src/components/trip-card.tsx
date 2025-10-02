@@ -1,13 +1,16 @@
-import type { Trip } from '@/lib/types';
+import type { Trip, User } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { Calendar, Globe, Lock, Users, ArrowRight } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, limit } from 'firebase/firestore';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+
 
 type TripCardProps = {
   trip: Trip;
@@ -26,10 +29,70 @@ const VisibilityIcon = ({ visibility }: { visibility: Trip['visibility'] }) => {
   }
 };
 
+const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
+
+function SharedWithAvatars({ trip }: { trip: Trip }) {
+    const firestore = useFirestore();
+
+    const sharedWithQuery = useMemoFirebase(() => {
+        if (!firestore || !trip.sharedWith || trip.sharedWith.length === 0) return null;
+        return query(collection(firestore, 'users'), where('__name__', 'in', trip.sharedWith), limit(3));
+    }, [firestore, trip.sharedWith]);
+
+    const { data: sharedUsers } = useCollection<User>(sharedWithQuery);
+
+    if (!sharedUsers || sharedUsers.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="flex -space-x-2">
+            <TooltipProvider>
+                {sharedUsers.map(user => {
+                    // This is a temporary way to get an avatar. 
+                    // In a real app, the user object would have a photoURL.
+                    const avatarId = `avatar-${(parseInt(user.id, 36) % 3) + 1}`;
+                    const avatar = PlaceHolderImages.find(p => p.id === avatarId);
+                    const userName = user.name || user.id;
+
+                    return (
+                        <Tooltip key={user.id}>
+                            <TooltipTrigger asChild>
+                                <Avatar className="border-2 border-card h-8 w-8">
+                                    {avatar && <AvatarImage src={avatar.imageUrl} alt={userName} />}
+                                    <AvatarFallback>{getInitials(userName)}</AvatarFallback>
+                                </Avatar>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{userName}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    );
+                })}
+                 {trip.sharedWith && trip.sharedWith.length > 3 && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Avatar className="border-2 border-card h-8 w-8">
+                                <AvatarFallback>+{trip.sharedWith.length - 3}</AvatarFallback>
+                            </Avatar>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>...and {trip.sharedWith.length - 3} more</p>
+                        </TooltipContent>
+                    </Tooltip>
+                )}
+            </TooltipProvider>
+        </div>
+    );
+}
+
+
 export function TripCard({ trip }: TripCardProps) {
   const coverPhoto = PlaceHolderImages.find(p => p.id === trip.coverPhotoId);
+  const { user } = useUser();
 
-  const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
+  const isOwner = user?.uid === trip.ownerId;
+
 
   return (
     <Card className="flex flex-col overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 group">
@@ -50,6 +113,7 @@ export function TripCard({ trip }: TripCardProps) {
           <VisibilityIcon visibility={trip.visibility} />
           {trip.visibility}
         </Badge>
+         {isOwner && <Badge variant="default" className="absolute top-2 left-2">My Trip</Badge>}
       </CardHeader>
       <CardContent className="p-4 flex-grow">
         <CardTitle className="font-headline text-lg mb-2">
@@ -62,31 +126,8 @@ export function TripCard({ trip }: TripCardProps) {
         <p className="text-sm text-muted-foreground line-clamp-3">{trip.description}</p>
       </CardContent>
       <CardFooter className="p-4 flex justify-between items-center">
-        <div className="flex items-center">
-          {trip.sharedWith && trip.sharedWith.length > 0 && (
-            <div className="flex -space-x-2">
-              <TooltipProvider>
-                {trip.sharedWith.map(user => {
-                    const avatar = PlaceHolderImages.find(p => p.id === user.avatarId);
-                    return (
-                        <Tooltip key={user.id}>
-                            <TooltipTrigger asChild>
-                                <Avatar className="border-2 border-card h-8 w-8">
-                                    {avatar && <AvatarImage src={avatar.imageUrl} alt={user.name} />}
-                                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                                </Avatar>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>{user.name}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    );
-                })}
-              </TooltipProvider>
-            </div>
-          )}
-        </div>
-        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary">
+         <SharedWithAvatars trip={trip} />
+        <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary ml-auto">
             <Link href={`/trips/${trip.id}`}>
                 View Trip <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
