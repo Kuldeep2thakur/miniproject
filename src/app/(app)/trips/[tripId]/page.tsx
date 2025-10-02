@@ -13,7 +13,8 @@ import { ArrowLeft, Calendar, Edit, Globe, Lock, PlusCircle, Users, File, Video 
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 
 const getInitials = (name: string) => name ? name.split(' ').map(n => n[0]).join('') : '';
 
@@ -238,27 +239,46 @@ export default function TripPage() {
                                                             const isVideo = mediaUrl.startsWith('data:video');
 
                                                             return (
-                                                                <div key={index} className="aspect-square rounded-md overflow-hidden bg-muted flex items-center justify-center">
-                                                                    {isImage ? (
-                                                                         <Image 
-                                                                            src={mediaUrl} 
-                                                                            alt={`Media for ${entry.title}`}
-                                                                            width={200}
-                                                                            height={200}
-                                                                            className="object-cover w-full h-full"
-                                                                            data-ai-hint="travel photo"
-                                                                        />
-                                                                    ) : isVideo ? (
-                                                                        <a href={mediaUrl} target="_blank" rel="noopener noreferrer" className="text-center p-2 group">
-                                                                            <Video className="h-8 w-8 mx-auto text-muted-foreground group-hover:text-primary transition-colors" />
-                                                                             <p className="text-xs text-muted-foreground truncate mt-1 group-hover:text-primary transition-colors">Play Video</p>
-                                                                        </a>
-                                                                    ) : (
-                                                                        <div className="text-center p-2">
-                                                                            <File className="h-8 w-8 mx-auto text-muted-foreground" />
-                                                                            <p className="text-xs text-muted-foreground truncate mt-1">File</p>
-                                                                        </div>
-                                                                    )}
+                                                                <div key={index}>
+                                                                {isImage ? (
+                                                                    <Dialog>
+                                                                        <DialogTrigger asChild>
+                                                                            <button className="aspect-square w-full rounded-md overflow-hidden bg-muted flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                                                                                <Image 
+                                                                                    src={mediaUrl} 
+                                                                                    alt={`Media for ${entry.title} - thumbnail ${index + 1}`}
+                                                                                    width={200}
+                                                                                    height={200}
+                                                                                    className="object-cover w-full h-full"
+                                                                                    data-ai-hint="travel photo"
+                                                                                />
+                                                                            </button>
+                                                                        </DialogTrigger>
+                                                                        <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+                                                                            <div className="relative w-full h-full">
+                                                                                 <Image 
+                                                                                    src={mediaUrl} 
+                                                                                    alt={`Media for ${entry.title}`}
+                                                                                    layout="responsive"
+                                                                                    width={1600}
+                                                                                    height={900}
+                                                                                    className="object-contain w-full h-full"
+                                                                                    data-ai-hint="travel photo"
+                                                                                />
+                                                                            </div>
+                                                                        </DialogContent>
+                                                                    </Dialog>
+                                                                ) : isVideo ? (
+                                                                    <a href={mediaUrl} target="_blank" rel="noopener noreferrer" className="aspect-square w-full rounded-md overflow-hidden bg-muted flex flex-col items-center justify-center text-center p-2 group">
+                                                                        <Video className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+                                                                         <p className="text-xs text-muted-foreground truncate mt-1 group-hover:text-primary transition-colors">Play Video</p>
+                                                                    </a>
+                                                                ) : (
+                                                                    <div className="aspect-square w-full rounded-md overflow-hidden bg-muted flex flex-col items-center justify-center text-center p-2">
+                                                                        <File className="h-8 w-8 text-muted-foreground" />
+                                                                        <p className="text-xs text-muted-foreground truncate mt-1">File</p>
+                                                                    </div>
+                                                                )}
                                                                 </div>
                                                             );
                                                         })}
