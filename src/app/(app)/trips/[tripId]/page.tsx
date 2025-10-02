@@ -208,8 +208,18 @@ export default function TripPage() {
                                     return (
                                         <div key={entry.id} className="bg-card p-4 rounded-lg shadow-sm border space-y-4">
                                             <div>
-                                                <h3 className="text-lg font-semibold">{entry.title}</h3>
-                                                <p className="text-sm text-muted-foreground mb-2">{format(visitedDate, 'PPP')}</p>
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="text-lg font-semibold">{entry.title}</h3>
+                                                        <p className="text-sm text-muted-foreground mb-2">{format(visitedDate, 'PPP')}</p>
+                                                    </div>
+                                                     <Button asChild variant="outline" size="sm">
+                                                        <Link href={`/trips/${tripId}/entries/${entry.id}/edit`}>
+                                                            <Edit className="h-3 w-3 mr-2" />
+                                                            Edit
+                                                        </Link>
+                                                    </Button>
+                                                </div>
                                                 <p className="text-sm whitespace-pre-wrap">{entry.content}</p>
                                             </div>
                                             {entry.media && entry.media.length > 0 && (
