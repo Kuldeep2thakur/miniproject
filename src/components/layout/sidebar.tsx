@@ -14,12 +14,10 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Globe, LayoutDashboard, LogOut, Settings, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { users } from '@/lib/data';
+import { usePathname, useRouter } from 'next/navigation';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-
-const currentUser = users[0];
-const userAvatar = PlaceHolderImages.find(p => p.id === currentUser.avatarId);
+import { useUser, useAuth } from '@/firebase';
+import { Skeleton } from '../ui/skeleton';
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -28,7 +26,21 @@ const menuItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
+
+  const handleSignOut = async () => {
+    await auth.signOut();
+    router.push('/');
+  };
+
+  const userAvatar = user ? PlaceHolderImages.find(p => p.id === 'avatar-1') : null;
+  const userName = user?.displayName || user?.email?.split('@')[0] || 'Wanderer';
+  const userEmail = user?.email || 'No email';
+
 
   return (
     <>
@@ -77,17 +89,33 @@ export function AppSidebar() {
         </SidebarMenu>
         <Separator className="my-2" />
         <div className="p-2 flex items-center gap-3">
-          <Avatar className="h-10 w-10">
-            {userAvatar && <AvatarImage src={userAvatar.imageUrl} alt={currentUser.name} />}
-            <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col overflow-hidden">
-            <span className="font-medium truncate">{currentUser.name}</span>
-            <span className="text-xs text-muted-foreground truncate">asha@example.com</span>
-          </div>
-          <Button asChild variant="ghost" size="icon" className="ml-auto flex-shrink-0">
-            <Link href="/"><LogOut /></Link>
-          </Button>
+          {isUserLoading ? (
+            <div className="flex items-center gap-3 w-full">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div className="flex flex-col gap-1 w-full">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-full" />
+              </div>
+            </div>
+          ) : user ? (
+            <>
+              <Avatar className="h-10 w-10">
+                {userAvatar && <AvatarImage src={userAvatar.imageUrl} alt={userName} />}
+                <AvatarFallback>{getInitials(userName)}</AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col overflow-hidden">
+                <span className="font-medium truncate">{userName}</span>
+                <span className="text-xs text-muted-foreground truncate">{userEmail}</span>
+              </div>
+              <Button onClick={handleSignOut} variant="ghost" size="icon" className="ml-auto flex-shrink-0">
+                <LogOut />
+              </Button>
+            </>
+          ) : (
+             <Button asChild className="w-full">
+                <Link href="/login">Log In</Link>
+            </Button>
+          )}
         </div>
       </SidebarFooter>
     </>

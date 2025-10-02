@@ -5,7 +5,26 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useAuth, initiateEmailSignIn, initiateEmailSignUp } from "@/firebase";
+import { useEffect } from "react";
+import { useUser } from "@/firebase/provider";
+
+const loginSchema = z.object({
+  email: z.string().email({ message: "Invalid email address." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+});
+
+const signupSchema = z.object({
+  fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
+  email: z.string().email({ message: "Invalid email address." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+});
+
 
 type AuthFormProps = {
   formType: 'login' | 'signup';
@@ -23,7 +42,33 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export function AuthForm({ formType }: AuthFormProps) {
   const isLogin = formType === 'login';
-  const pathname = usePathname();
+  const router = useRouter();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+
+  const formSchema = isLogin ? loginSchema : signupSchema;
+  type FormSchema = z.infer<typeof formSchema>;
+  const form = useForm<FormSchema>({
+    resolver: zodResolver(formSchema),
+    defaultValues: isLogin ? { email: '', password: '' } : { fullName: '', email: '', password: '' },
+  });
+
+  useEffect(() => {
+    if (user && !isUserLoading) {
+      router.push('/dashboard');
+    }
+  }, [user, isUserLoading, router]);
+
+  const onSubmit = (values: FormSchema) => {
+    if (isLogin) {
+      const { email, password } = values as z.infer<typeof loginSchema>;
+      initiateEmailSignIn(auth, email, password);
+    } else {
+      const { email, password } = values as z.infer<typeof signupSchema>;
+      // We are not storing the full name in this version
+      initiateEmailSignUp(auth, email, password);
+    }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -37,35 +82,61 @@ export function AuthForm({ formType }: AuthFormProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          {!isLogin && (
-            <div className="grid gap-2">
-              <Label htmlFor="full-name">Full Name</Label>
-              <Input id="full-name" placeholder="Asha Traveler" required />
-            </div>
-          )}
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="asha@example.com"
-              required
-            />
-          </div>
-          <div className="grid gap-2">
-            <div className="flex items-center">
-              <Label htmlFor="password">Password</Label>
-              {isLogin && (
-                <Link href="#" className="ml-auto inline-block text-sm underline">
-                  Forgot your password?
-                </Link>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {!isLogin && (
+                <FormField
+                  control={form.control}
+                  name="fullName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Asha Traveler" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
-            </div>
-            <Input id="password" type="password" required />
-          </div>
-          <Button type="submit" className="w-full" asChild>
-            <Link href="/dashboard">{isLogin ? 'Login' : 'Create account'}</Link>
-          </Button>
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="asha@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center">
+                        <FormLabel>Password</FormLabel>
+                        {isLogin && (
+                            <Link href="#" className="ml-auto inline-block text-sm underline">
+                            Forgot your password?
+                            </Link>
+                        )}
+                    </div>
+                    <FormControl>
+                      <Input type="password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? 'Processing...' : (isLogin ? 'Login' : 'Create account')}
+              </Button>
+            </form>
+          </Form>
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />

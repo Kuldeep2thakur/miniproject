@@ -1,9 +1,22 @@
+'use client';
 import { TripCard } from "@/components/trip-card";
 import { Button } from "@/components/ui/button";
 import { trips } from "@/lib/data";
+import { useUser } from "@/firebase";
 import { PlusCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function DashboardPage() {
+    const { user, isUserLoading } = useUser();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!isUserLoading && !user) {
+            router.push('/login');
+        }
+    }, [user, isUserLoading, router]);
+
     const myTrips = trips.filter(trip => trip.visibility === 'private' || trip.visibility === 'shared');
 
   return (
