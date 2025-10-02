@@ -62,7 +62,7 @@ export default function NewEntryPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const onSubmit = async (data: z.infer<typeof NewEntrySchema>>) => {
+  const onSubmit = async (data: z.infer<typeof NewEntrySchema>) => {
     if (!user || !firestore || !tripId) return;
 
     const entriesCollection = collection(firestore, 'trips', tripId as string, 'entries');
@@ -184,4 +184,3 @@ export default function NewEntryPage() {
     </div>
   );
 }
-
