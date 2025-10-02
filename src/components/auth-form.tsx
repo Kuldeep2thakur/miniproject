@@ -5,12 +5,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useAuth, initiateEmailSignIn, initiateEmailSignUp } from "@/firebase";
+import { useAuth, initiateEmailSignIn, initiateEmailSignUp, initiateGoogleSignIn } from "@/firebase";
 import { useEffect, useState } from "react";
 import { useUser } from "@/firebase/provider";
 
@@ -77,6 +77,10 @@ export function AuthForm({ formType }: AuthFormProps) {
       // We are not storing the full name in this version
       initiateEmailSignUp(auth, email, password);
     }
+  };
+
+  const handleGoogleSignIn = () => {
+    initiateGoogleSignIn(auth);
   };
 
   return (
@@ -154,7 +158,7 @@ export function AuthForm({ formType }: AuthFormProps) {
                 <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
             </div>
           </div>
-          <Button variant="outline" className="w-full">
+          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
             <GoogleIcon className="mr-2" />
             {isLogin ? 'Login with Google' : 'Sign up with Google'}
           </Button>
