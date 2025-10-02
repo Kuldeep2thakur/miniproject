@@ -9,7 +9,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Edit, Globe, Lock, PlusCircle, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Edit, Globe, Lock, PlusCircle, Users, File } from 'lucide-react';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -206,10 +206,44 @@ export default function TripPage() {
                                         : (entry.visitedAt as any)?.toDate?.() || new Date(entry.visitedAt as string);
 
                                     return (
-                                        <div key={entry.id} className="bg-card p-4 rounded-lg shadow-sm border">
-                                            <h3 className="text-lg font-semibold">{entry.title}</h3>
-                                            <p className="text-sm text-muted-foreground mb-2">{format(visitedDate, 'PPP')}</p>
-                                            <p className="text-sm">{entry.content}</p>
+                                        <div key={entry.id} className="bg-card p-4 rounded-lg shadow-sm border space-y-4">
+                                            <div>
+                                                <h3 className="text-lg font-semibold">{entry.title}</h3>
+                                                <p className="text-sm text-muted-foreground mb-2">{format(visitedDate, 'PPP')}</p>
+                                                <p className="text-sm whitespace-pre-wrap">{entry.content}</p>
+                                            </div>
+                                            {entry.media && entry.media.length > 0 && (
+                                                <div>
+                                                    <h4 className="font-semibold text-sm mb-2">Media</h4>
+                                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                                        {entry.media.map((mediaFile, index) => {
+                                                            const isImage = /\.(jpg|jpeg|png|gif)$/i.test(mediaFile);
+                                                            // In a real app, you'd have actual URLs from a storage service
+                                                            const mediaUrl = `https://picsum.photos/seed/${entry.id}-${index}/200/200`;
+
+                                                            return (
+                                                                <div key={index} className="aspect-square rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                                                                    {isImage ? (
+                                                                         <Image 
+                                                                            src={mediaUrl} 
+                                                                            alt={`Media for ${entry.title}`}
+                                                                            width={200}
+                                                                            height={200}
+                                                                            className="object-cover w-full h-full"
+                                                                            data-ai-hint="travel photo"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="text-center p-2">
+                                                                            <File className="h-8 w-8 mx-auto text-muted-foreground" />
+                                                                            <p className="text-xs text-muted-foreground truncate mt-1">{mediaFile}</p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )
                                 })}
