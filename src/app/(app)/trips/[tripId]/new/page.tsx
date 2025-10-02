@@ -204,14 +204,14 @@ export default function NewEntryPage() {
                <FormField
                 control={form.control}
                 name="media"
-                render={({ field: { onChange, onBlur, name, ref } }) => (
+                render={({ field: { onChange, name, ref } }) => (
                   <FormItem>
                     <FormLabel>Attach Photos & Vlogs</FormLabel>
                     <FormControl>
                         <div className="relative">
                             <Paperclip className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                             <Input 
-                                onBlur={onBlur}
+                                onBlur={form.control.register('media').onBlur}
                                 name={name}
                                 ref={ref}
                                 type="file" 
