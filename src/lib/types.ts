@@ -1,4 +1,4 @@
-import { DocumentReference } from "firebase/firestore";
+import { DocumentReference, Timestamp } from "firebase/firestore";
 
 export type Trip = {
   id: string;
@@ -8,7 +8,7 @@ export type Trip = {
   description: string;
   coverPhotoId: string;
   visibility: 'private' | 'public' | 'shared';
-  sharedWith?: User[];
+  sharedWith?: string[];
   ownerId?: string;
   tripRef?: DocumentReference
 };
@@ -18,3 +18,12 @@ export type User = {
   name: string;
   avatarId: string;
 };
+
+export type Entry = {
+    id: string;
+    tripId: string;
+    title: string;
+    content: string;
+    visitedAt: Timestamp | Date | string;
+    createdAt?: Timestamp | Date | string;
+}
