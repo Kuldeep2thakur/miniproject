@@ -97,7 +97,7 @@ export function TripCard({ trip }: TripCardProps) {
   return (
     <Card className="flex flex-col overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 group">
       <CardHeader className="p-0 relative">
-        <Link href={`/trips/${trip.id}`} className="block">
+        <Link href={`/trips/${trip.id}`}>
           {coverPhoto && (
             <Image
               src={coverPhoto.imageUrl}
