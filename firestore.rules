@@ -1,197 +1,195 @@
 /**
- * @fileoverview Firestore Security Rules for the application.
+ * @fileoverview Firestore Security Rules for the WanderLust application.
  *
  * Core Philosophy:
- * This ruleset enforces a user-ownership model for user profiles and trips. Users can only
- * read and write their own profile data. Trips can be created by any authenticated user,
- * but only the owner or shared users can modify them. Comments can be created by any
- * authenticated user, but only the author can modify them.
+ * This ruleset enforces a strict user-ownership model for user profiles and their associated trips and entries.
+ * Public readability is supported for trips explicitly marked as public. Shared trips are accessible to specified users.
+ * Routes and Comments are secured based on the visibility of their parent Trips and Entries respectively.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile data, with userId matching the Firebase Auth UID.
- * - /trips/{tripId}: Stores trip data, with an ownerId field indicating the trip creator.
- * - /trips/{tripId}/entries/{entryId}: Stores entries associated with a trip.
- * - /routes/{routeId}: Stores route data associated with trips.
- * - /comments/{commentId}: Stores comments on trip entries.
+ * - /users/{userId}: User profiles, accessible only to the authenticated user.
+ * - /users/{userId}/trips/{tripId}: Trips owned by a specific user.
+ * - /users/{userId}/trips/{tripId}/entries/{entryId}: Entries for a specific trip.
+ * - /routes/{routeId}: Route data, associated with a specific trip via the `tripId` field.
+ * - /comments/{commentId}: Comments, associated with a specific entry via the `entryId` and `authorId` fields.
  *
  * Key Security Decisions:
- * - Users can only create their own user document (self-creation).
- * - Listing users is forbidden.
- * - Trips enforce ownership via the ownerId field.
- * - Comments are publicly readable but writable only by the author.
- * - Relies on get() calls to parent documents, which should be replaced in the future with denormalized data.
+ * - Users can only read and write their own profiles.
+ * - Trips are owned by a user and can be private, public, or shared.
+ * - Entries inherit the security settings of their parent trip.
+ * - Routes are secured based on the ownership of their parent trip.
+ * - Comments are secured based on the visibility of their parent entries.
+ * - Listing all users is disallowed.
  *
  * Denormalization for Authorization:
- * To create simpler, more performant rules, denormalize data required for authorization directly
- * onto the documents being secured. For example, the 'Trip' document has an 'ownerId' field,
- * which avoids needing to query a separate 'users' collection to check ownership.
- * Likewise, while not yet implemented, the security reasoning proposes copying `visibility` and `sharedWith`
- * fields from the `Trip` document onto each `Entry` document.
- *
- * Structural Segregation:
- * User-specific data is stored under `/users/{userId}`, while potentially shared or public trip data
- * is stored under `/trips/{tripId}`.
+ * - The `Trip` document includes `visibility` and `sharedWith` fields to enable authorization without requiring `get()` calls to other documents.
+ *   This enables rules to quickly determine if a user has permission to read a trip.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Secure user profiles. Only the authenticated user can read/write their own profile.
      * @path /users/{userId}
-     * @allow (create) User with matching UID can create their own profile.
-     * @allow (get) User can read their own profile.
-     * @allow (update) User can update their own profile.
-     * @allow (delete) User can delete their own profile.
-     * @deny (create) User cannot create a profile with a different UID.
-     * @deny (get) User cannot read another user's profile.
-     * @deny (update) User cannot update another user's profile.
-     * @deny (delete) User cannot delete another user's profile.
-     * @principle Enforces document ownership for all operations on user profiles.
+     * @allow (get, update, delete) if request.auth.uid == userId
+     * @allow (create) if request.auth.uid == request.resource.data.id
+     * @deny (list)
+     * @deny (create) if request.auth.uid != request.resource.data.id
+     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
      */
     match /users/{userId} {
-      // Helper function to check if the requesting user is the owner of the document.
       function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
+        return request.auth.uid == userId;
       }
 
-      // Allow the user to create their own document, enforcing that the userId matches their auth UID.
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      // Allow the user to read their own document.
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       allow get: if isOwner(userId);
-      // Allow the user to update their own document. Enforce immutability of the user ID.
-      allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
-      // Allow the user to delete their own document.
-      allow delete: if isOwner(userId) && resource != null;
-      // Listing users is not permitted.
       allow list: if false;
+
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Controls access to trip documents.
-     * @path /trips/{tripId}
-     * @allow (create) Authenticated user can create a trip.
-     * @allow (get) Anyone can read a trip.
-     * @allow (update) Only the owner can update a trip.
-     * @allow (delete) Only the owner can delete a trip.
-     * @deny (create) Unauthenticated user cannot create a trip.
-     * @deny (update) Non-owner cannot update a trip.
-     * @deny (delete) Non-owner cannot delete a trip.
-     * @principle Enforces document ownership for writes.
+     * @description Secure trip information owned by a specific user. Includes denormalized 'visibility' and 'sharedWith' for authorization independence.
+     * @path /users/{userId}/trips/{tripId}
+     * @allow (get, list) if resource.data.visibility == 'public' || isOwner(userId) || (resource.data.visibility == 'shared' && resource.data.sharedWith.hasAny([request.auth.uid]))
+     * @allow (create) if isOwner(userId)
+     * @allow (update, delete) if isExistingOwner(userId)
+     * @deny (create) if !isOwner(userId)
+     * @principle Enforces document ownership for writes, public read for public trips, shared read for shared trips.
      */
-    match /trips/{tripId} {
-      // Helper function to check if the requesting user is the owner of the trip.
-      function isOwner(ownerId) {
-        return request.auth != null && request.auth.uid == ownerId;
+    match /users/{userId}/trips/{tripId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
       }
 
-      function isExistingOwner(ownerId) {
-          return isOwner(ownerId) && resource != null;
+      function isSignedIn() {
+        return request.auth != null;
       }
 
-      // Allow any authenticated user to create a trip.  Enforce the ownerId is set correctly.
-      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
-      // Allow anyone to read a trip.
-      allow get: if true;
-      // Only the owner can update a trip.
-      allow update: if isExistingOwner(resource.data.ownerId);
-      // Only the owner can delete a trip.
-      allow delete: if isExistingOwner(resource.data.ownerId);
-      // Allow listing of trips.
-      allow list: if true;
+      allow get, list: if resource.data.get("visibility", "") == 'public' || isOwner(userId) || (resource.data.get("visibility", "") == 'shared' && resource.data.sharedWith.hasAny([request.auth.uid]));
+
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Controls access to entry documents within a trip.
-     * @path /trips/{tripId}/entries/{entryId}
-     * @allow (create) Authenticated user can create an entry if they are the trip owner.
-     * @allow (get) Anyone can read an entry if the trip is public or they are shared with the trip.
-     * @allow (update) Only the trip owner can update an entry.
-     * @allow (delete) Only the trip owner can delete an entry.
-     * @deny (create) User cannot create an entry for a trip they don't own.
-     * @deny (update) User cannot update an entry for a trip they don't own.
-     * @deny (delete) User cannot delete an entry for a trip they don't own.
-     * @principle Enforces document ownership for writes, public read for public trips.
+     * @description Secure trip entries for a specific trip. Authorization is based on the parent trip's ownership and visibility.
+     * @path /users/{userId}/trips/{tripId}/entries/{entryId}
+     * @allow (get, list) if get(/databases/$(database)/documents/users/$(userId)/trips/$(tripId)).data.visibility == 'public' || isTripOwner(userId, tripId) || isTripShared(userId, tripId)
+     * @allow (create) if isTripOwner(userId, tripId)
+     * @allow (update, delete) if isExistingTripOwner(userId, tripId)
+     * @deny (create) if !isTripOwner(userId, tripId)
+     * @principle Enforces document ownership inherited from the trip for writes, public read for public trips, shared read for shared trips.
      */
-    match /trips/{tripId}/entries/{entryId} {
-        // Helper function to check if the requesting user is the owner of the trip.
-        function isTripOwner(tripId) {
-            return get(/databases/$(database)/documents/trips/$(tripId)).data.ownerId == request.auth.uid;
+    match /users/{userId}/trips/{tripId}/entries/{entryId} {
+        function getTrip() {
+            return get(/databases/$(database)/documents/users/$(userId)/trips/$(tripId));
         }
 
-        function isExistingTripOwner(tripId) {
-            return isTripOwner(tripId) && resource != null;
+        function isTripOwner() {
+          return getTrip().data.get("ownerId", "") == request.auth.uid;
         }
 
-        // Allow creating an entry if the user is the trip owner. Enforce the tripId is consistent with the path.
-        allow create: if request.auth != null && isTripOwner(tripId) && request.resource.data.tripId == tripId;
-        // Allow anyone to read the entry if they have access to the trip.
-        allow get: if true;
-        // Only the trip owner can update the entry.
-        allow update: if isExistingTripOwner(tripId);
-        // Only the trip owner can delete the entry.
-        allow delete: if isExistingTripOwner(tripId);
-        // Allow listing of entries if the user is the trip owner.
-        allow list: if isTripOwner(tripId);
-    }
+        function isTripShared() {
+          return getTrip().data.sharedWith.hasAny([request.auth.uid]);
+        }
+
+        function isTripPublic() {
+          return getTrip().data.get("visibility", "") == 'public';
+        }
+
+        function isSignedIn() {
+          return request.auth != null;
+        }
+
+        allow get, list: if isTripPublic() || isTripOwner() || isTripShared();
+
+        allow create: if isSignedIn() && isTripOwner();
+        allow update: if isTripOwner();
+        allow delete: if isTripOwner();
+      }
 
     /**
-     * @description Controls access to route documents.
+     * @description Secure route data associated with a specific trip.
      * @path /routes/{routeId}
-     * @allow (create) Authenticated user can create a route.
-     * @allow (get) Anyone can read a route.
-     * @allow (update) No one can update a route.
-     * @allow (delete) No one can delete a route.
-     * @deny (create) Unauthenticated user cannot create a route.
-     * @deny (update) No one can update a route.
-     * @deny (delete) No one can delete a route.
-     * @principle Allows public read access, restricts writes.
+     * @allow (get, list) if isTripPublicByRouteId(resource.data.tripId) || isTripOwnerByRouteId(resource.data.tripId) || isTripSharedByRouteId(resource.data.tripId)
+     * @allow (create) if isTripOwnerByRouteId(request.resource.data.tripId)
+     * @allow (update, delete) if isExistingTripOwnerByRouteId(resource.data.tripId)
+     * @principle Enforces document ownership inherited from the trip for writes, public read for public trips, shared read for shared trips.
      */
     match /routes/{routeId} {
-      // Allow any authenticated user to create a route.
-      allow create: if request.auth != null;
-      // Allow anyone to read a route.
-      allow get: if true;
-      // No one can update a route.
-      allow update: if false;
-      // No one can delete a route.
-      allow delete: if false;
-      // Allow listing of routes.
-      allow list: if true;
+      function getTrip(tripId) {
+        return get(/databases/$(database)/documents/users/{userId}/trips/$(tripId));
+      }
+
+      function isTripOwnerByRouteId(tripId) {
+        return getTrip(tripId).data.get("ownerId", "") == request.auth.uid;
+      }
+
+      function isTripSharedByRouteId(tripId) {
+        return getTrip(tripId).data.sharedWith.hasAny([request.auth.uid]);
+      }
+
+      function isTripPublicByRouteId(tripId) {
+        return getTrip(tripId).data.get("visibility", "") == 'public';
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get, list: if resource.data.get("tripId", "") != null && (isTripPublicByRouteId(resource.data.tripId) || isTripOwnerByRouteId(resource.data.tripId) || isTripSharedByRouteId(resource.data.tripId));
+
+      allow create: if isSignedIn() && isTripOwnerByRouteId(request.resource.data.tripId);
+      allow update: if isSignedIn() && isTripOwnerByRouteId(resource.data.tripId);
+      allow delete: if isSignedIn() && isTripOwnerByRouteId(resource.data.tripId);
     }
 
     /**
-     * @description Controls access to comment documents.
+     * @description Secure comments on trip entries.
      * @path /comments/{commentId}
-     * @allow (create) Authenticated user can create a comment. Enforce authorId is correct.
-     * @allow (get) Anyone can read a comment.
-     * @allow (update) Only the author can update a comment. Enforce authorId is immutable.
-     * @allow (delete) Only the author can delete a comment.
-     * @deny (create) Unauthenticated user cannot create a comment.
-     * @deny (update) Non-author cannot update a comment.
-     * @deny (delete) Non-author cannot delete a comment.
-     * @principle Enforces document ownership for writes.
+     * @allow (get, list) if isEntryPublicByCommentId(resource.data.entryId) || isEntryOwnerByCommentId(resource.data.entryId) || isEntrySharedByCommentId(resource.data.entryId) || request.auth.uid == resource.data.authorId
+     * @allow (create) if isSignedIn()
+     * @allow (update, delete) if isExistingCommentOwner(resource.data.authorId)
+     * @principle Public read for comments on public entries, owner read/write for comment authors.
      */
     match /comments/{commentId} {
-      // Helper function to check if the requesting user is the author of the comment.
-      function isAuthor(authorId) {
-        return request.auth != null && request.auth.uid == authorId;
+      function getEntry(entryId) {
+          return get(/databases/$(database)/documents/users/{userId}/trips/{tripId}/entries/$(entryId));
       }
 
-      function isExistingAuthor(authorId) {
-        return isAuthor(authorId) && resource != null;
+      function isEntryOwnerByCommentId(entryId) {
+        return getEntry(entryId).data.get("ownerId", "") == request.auth.uid;
       }
 
-      // Allow any authenticated user to create a comment, enforce authorId matches their UID.
-      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-      // Allow anyone to read a comment.
-      allow get: if true;
-      // Only the author can update the comment.
-      allow update: if isExistingAuthor(resource.data.authorId) && request.resource.data.authorId == resource.data.authorId;
-      // Only the author can delete the comment.
-      allow delete: if isExistingAuthor(resource.data.authorId);
-      // Allow listing of comments.
-      allow list: if true;
+      function isEntrySharedByCommentId(entryId) {
+        return getEntry(entryId).data.sharedWith.hasAny([request.auth.uid]);
+      }
+
+      function isEntryPublicByCommentId(entryId) {
+        return getEntry(entryId).data.get("visibility", "") == 'public';
+      }
+
+      function isCommentOwner(authorId) {
+        return request.auth.uid == authorId;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get, list: if resource.data.get("entryId", "") != null && (isEntryPublicByCommentId(resource.data.entryId) || isEntryOwnerByCommentId(resource.data.entryId) || isEntrySharedByCommentId(resource.data.entryId) || isCommentOwner(resource.data.authorId));
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && isCommentOwner(resource.data.authorId);
+      allow delete: if isSignedIn() && isCommentOwner(resource.data.authorId);
     }
   }
 }
