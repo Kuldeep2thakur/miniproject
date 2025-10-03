@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from '@/hooks/use-toast';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const NewEntrySchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -40,6 +41,7 @@ const NewEntrySchema = z.object({
   visitedAt: z.date({
     required_error: "A date for this entry is required.",
   }),
+  media: z.any().optional(),
 });
 
 
@@ -71,6 +73,17 @@ export default function NewEntryPage() {
     setIsSubmitting(true);
 
     try {
+        let mediaURLs: string[] = [];
+        if (data.media && data.media.length > 0) {
+            const storage = getStorage();
+            for (const file of Array.from(data.media as FileList)) {
+                const storageRef = ref(storage, `trip-media/${tripId}/${user.uid}/${Date.now()}-${file.name}`);
+                await uploadBytes(storageRef, file);
+                const downloadURL = await getDownloadURL(storageRef);
+                mediaURLs.push(downloadURL);
+            }
+        }
+
         const entriesCollection = collection(firestore, 'trips', tripId as string, 'entries');
         await addDoc(entriesCollection, {
             title: data.title,
@@ -79,6 +92,7 @@ export default function NewEntryPage() {
             tripId: tripId,
             authorId: user.uid,
             createdAt: serverTimestamp(),
+            media: mediaURLs,
         }).catch(error => {
             console.error("Error creating document: ", error);
         });
@@ -119,7 +133,7 @@ export default function NewEntryPage() {
         <CardHeader>
           <CardTitle>Add New Diary Entry</CardTitle>
           <CardDescription>
-            Record your memories from this day of your trip.
+            Record your memories and upload photos from this day of your trip.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -191,6 +205,33 @@ export default function NewEntryPage() {
                         {...field}
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="media"
+                render={({ field: { onChange, value, ...rest } }) => (
+                  <FormItem>
+                    <FormLabel>Add Photos & Vlogs</FormLabel>
+                    <FormControl>
+                        <div className="relative">
+                            <Paperclip className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input 
+                                {...rest}
+                                type="file" 
+                                multiple
+                                accept="image/*,video/*"
+                                className="pl-10"
+                                onChange={(e) => onChange(e.target.files)}
+                            />
+                        </div>
+                    </FormControl>
+                    <FormDescription>
+                      You can select multiple files to upload.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

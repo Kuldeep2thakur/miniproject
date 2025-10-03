@@ -10,12 +10,13 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Edit, Globe, Lock, PlusCircle, Users, File, Video, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, Edit, Globe, Lock, PlusCircle, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useEffect } from 'react';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 const getInitials = (name: string) => name ? name.split(' ').map(n => n[0]).join('') : '';
 
@@ -251,6 +252,44 @@ export default function TripPage() {
 
                                     return (
                                         <div key={entry.id} className="bg-card p-4 rounded-lg shadow-sm border space-y-4">
+                                            {entry.media && entry.media.length > 0 && (
+                                                <div className="relative">
+                                                     <Carousel>
+                                                        <CarouselContent>
+                                                            {entry.media.map((url, index) => (
+                                                                <CarouselItem key={index}>
+                                                                    <Dialog>
+                                                                        <DialogTrigger asChild>
+                                                                            <Image 
+                                                                                src={url}
+                                                                                alt={`Entry photo ${index + 1}`}
+                                                                                width={800}
+                                                                                height={600}
+                                                                                className="rounded-lg object-cover w-full h-64 cursor-pointer"
+                                                                            />
+                                                                        </DialogTrigger>
+                                                                        <DialogContent className="max-w-4xl p-0">
+                                                                            <Image
+                                                                                src={url}
+                                                                                alt={`Entry photo ${index + 1}`}
+                                                                                width={1600}
+                                                                                height={1200}
+                                                                                className="rounded-lg object-contain w-full"
+                                                                            />
+                                                                        </DialogContent>
+                                                                    </Dialog>
+                                                                </CarouselItem>
+                                                            ))}
+                                                        </CarouselContent>
+                                                        {entry.media.length > 1 && (
+                                                            <>
+                                                                <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2" />
+                                                                <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2" />
+                                                            </>
+                                                        )}
+                                                    </Carousel>
+                                                </div>
+                                            )}
                                             <div>
                                                 <div className="flex justify-between items-start">
                                                     <div>
