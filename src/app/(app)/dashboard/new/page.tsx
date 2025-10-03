@@ -7,8 +7,7 @@ import {
   useRouter
 } from "next/navigation";
 import {
-  useEffect,
-  useState
+  useEffect
 } from "react";
 import {
   addDoc
@@ -143,8 +142,6 @@ export default function NewTripPage() {
   const onSubmit = async (data: z.infer < typeof NewTripFormSchema > ) => {
     if (!user || !firestore) return;
 
-    form.formState.isSubmitting = true;
-
     try {
       let coverPhotoURL: string | undefined = undefined;
 
@@ -194,8 +191,6 @@ export default function NewTripPage() {
             title: "Error Creating Trip",
             description: serverError.message || "There was a problem creating your trip. Please try again.",
         });
-    } finally {
-        form.formState.isSubmitting = false;
     }
   };
 
