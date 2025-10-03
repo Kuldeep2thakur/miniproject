@@ -2,7 +2,7 @@
 
 import { useDoc, useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, collection, query, orderBy } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { Trip, Entry, User as TripUser } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -23,8 +23,8 @@ function SharedWithAvatars({ trip }: { trip: Trip }) {
 
     const sharedWithQuery = useMemoFirebase(() => {
         if (!firestore || !trip.sharedWith || trip.sharedWith.length === 0) return null;
-        // Firestore 'in' queries are limited to 10 elements. For this UI, we limit to 5.
-        return query(collection(firestore, 'users'), where('__name__', 'in', trip.sharedWith.slice(0, 5)));
+        // Firestore 'in' queries are limited to 30 elements in total for a single query.
+        return query(collection(firestore, 'users'), where('__name__', 'in', trip.sharedWith.slice(0, 30)));
     }, [firestore, trip.sharedWith]);
 
     const { data: sharedUsers } = useCollection<TripUser>(sharedWithQuery);
@@ -37,8 +37,7 @@ function SharedWithAvatars({ trip }: { trip: Trip }) {
         <div className="flex items-center gap-2">
              <div className="flex -space-x-2">
                 <TooltipProvider>
-                    {sharedUsers.map(user => {
-                        const avatar = PlaceHolderImages.find(p => p.id === `avatar-${(parseInt(user.id, 36) % 3) + 1}`);
+                    {sharedUsers.slice(0,5).map(user => {
                         const userName = user.displayName || user.email || user.id;
 
                         return (
@@ -149,6 +148,9 @@ export default function TripPage() {
     const isOwner = user?.uid === trip.ownerId;
     const canAddEntry = isOwner || (trip.visibility === 'shared' && trip.sharedWith?.includes(user?.uid || ''));
 
+    const isMediaImage = (url: string) => /\.(jpeg|jpg|gif|png|webp)$/i.test(url) || url.startsWith('data:image');
+    const isMediaVideo = (url: string) => /\.(mp4|webm|ogg)$/i.test(url) || url.startsWith('data:video');
+
     return (
         <div className="min-h-screen">
              <header className="relative h-64 md:h-80 w-full">
@@ -235,8 +237,8 @@ export default function TripPage() {
                                                     <h4 className="font-semibold text-sm mb-2">Media</h4>
                                                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                                                         {entry.media.map((mediaUrl, index) => {
-                                                            const isImage = mediaUrl.startsWith('data:image');
-                                                            const isVideo = mediaUrl.startsWith('data:video');
+                                                            const isImage = isMediaImage(mediaUrl);
+                                                            const isVideo = isMediaVideo(mediaUrl);
 
                                                             return (
                                                                 <div key={index}>
@@ -335,3 +337,5 @@ export default function TripPage() {
         </div>
     );
 }
+
+    

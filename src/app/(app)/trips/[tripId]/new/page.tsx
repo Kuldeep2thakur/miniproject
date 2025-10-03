@@ -23,8 +23,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useParams, useRouter } from 'next/navigation';
-import { useFirestore, useUser } from '@/firebase';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { useFirestore, useUser, useStorage } from '@/firebase';
+import { addDoc, collection, serverTimestamp, doc } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CalendarIcon, Paperclip } from 'lucide-react';
@@ -43,21 +44,12 @@ const NewEntrySchema = z.object({
   media: z.instanceof(FileList).optional(),
 });
 
-// Helper function to convert a file to a data URL
-const fileToDataURL = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
-
 
 export default function NewEntryPage() {
   const { tripId } = useParams();
   const router = useRouter();
   const firestore = useFirestore();
+  const storage = useStorage();
   const { user, isUserLoading } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -77,31 +69,41 @@ export default function NewEntryPage() {
   }, [user, isUserLoading, router]);
 
   const onSubmit = async (data: z.infer<typeof NewEntrySchema>) => {
-    if (!user || !firestore || !tripId) return;
+    if (!user || !firestore || !storage || !tripId) return;
 
     setIsSubmitting(true);
 
     try {
         const entriesCollection = collection(firestore, 'trips', tripId as string, 'entries');
         
-        let mediaDataUrls: string[] = [];
+        // Create a new document reference with an auto-generated ID to get the entryId beforehand
+        const newEntryRef = doc(entriesCollection);
+        const entryId = newEntryRef.id;
+        
+        let mediaUrls: string[] = [];
         if (data.media && data.media.length > 0) {
-            mediaDataUrls = await Promise.all(
-                Array.from(data.media).map(file => fileToDataURL(file))
+            mediaUrls = await Promise.all(
+                Array.from(data.media).map(async (file) => {
+                    const fileRef = ref(storage, `users/${user.uid}/${tripId}/${entryId}/${file.name}`);
+                    await uploadBytes(fileRef, file);
+                    return await getDownloadURL(fileRef);
+                })
             );
         }
 
         const newEntryData = {
+          id: entryId,
           title: data.title,
           content: data.content,
           visitedAt: data.visitedAt,
-          media: mediaDataUrls,
+          media: mediaUrls,
           tripId: tripId,
           authorId: user.uid,
           createdAt: serverTimestamp(),
         };
         
-        addDoc(entriesCollection, newEntryData)
+        // Use setDoc with the pre-created ref
+        await addDoc(entriesCollection, newEntryData)
           .catch(error => {
             console.error("Error creating document: ", error);
           });
@@ -258,3 +260,5 @@ export default function NewEntryPage() {
     </div>
   );
 }
+
+    
