@@ -23,9 +23,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useParams, useRouter } from 'next/navigation';
-import { useFirestore, useUser, useDoc, useMemoFirebase, useStorage } from '@/firebase';
+import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { updateDoc, doc } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CalendarIcon, Paperclip } from 'lucide-react';
@@ -36,6 +35,15 @@ import { Calendar } from '@/components/ui/calendar';
 import { Entry } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
 
 const EditEntrySchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -51,7 +59,6 @@ export default function EditEntryPage() {
   const { tripId, entryId } = useParams();
   const router = useRouter();
   const firestore = useFirestore();
-  const storage = useStorage();
   const { user, isUserLoading } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -91,7 +98,7 @@ export default function EditEntryPage() {
   }, [entry, form]);
 
   const onSubmit = async (data: z.infer<typeof EditEntrySchema>) => {
-    if (!user || !storage || !tripId || !entryId || !entryRef || !entry) return;
+    if (!user || !tripId || !entryId || !entryRef || !entry) return;
 
     setIsSubmitting(true);
 
@@ -99,11 +106,7 @@ export default function EditEntryPage() {
         let newMediaUrls: string[] = [];
         if (data.media && data.media.length > 0) {
             newMediaUrls = await Promise.all(
-                Array.from(data.media).map(async (file: any) => {
-                    const fileRef = ref(storage, `users/${user.uid}/${tripId}/${entryId}/${file.name}`);
-                    await uploadBytes(fileRef, file);
-                    return await getDownloadURL(fileRef);
-                })
+                Array.from(data.media as FileList).map(file => fileToDataUrl(file))
             );
         }
 

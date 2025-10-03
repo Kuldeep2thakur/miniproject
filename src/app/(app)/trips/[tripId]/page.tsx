@@ -148,8 +148,8 @@ export default function TripPage() {
     const isOwner = user?.uid === trip.ownerId;
     const canAddEntry = isOwner || (trip.visibility === 'shared' && trip.sharedWith?.includes(user?.uid || ''));
 
-    const isMediaImage = (url: string) => /\.(jpeg|jpg|gif|png|webp)$/i.test(url) || url.startsWith('data:image');
-    const isMediaVideo = (url: string) => /\.(mp4|webm|ogg)$/i.test(url) || url.startsWith('data:video');
+    const isMediaImage = (url: string) => url.startsWith('data:image');
+    const isMediaVideo = (url: string) => url.startsWith('data:video');
 
     return (
         <div className="min-h-screen">
@@ -337,5 +337,3 @@ export default function TripPage() {
         </div>
     );
 }
-
-    
