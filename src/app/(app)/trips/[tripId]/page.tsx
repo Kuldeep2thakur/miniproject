@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useDoc, useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
@@ -254,7 +255,7 @@ export default function TripPage() {
                                                 <div className="flex justify-between items-start">
                                                     <div>
                                                         <h3 className="text-lg font-semibold">{entry.title}</h3>
-                                                        <p className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
+                                                        <div className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
                                                             {format(visitedDate, 'PPP')}
                                                             {entry.authorId && (
                                                                 <>
@@ -262,7 +263,7 @@ export default function TripPage() {
                                                                     <AuthorAvatar authorId={entry.authorId} />
                                                                 </>
                                                             )}
-                                                        </p>
+                                                        </div>
                                                     </div>
                                                      {canEditEntry && (
                                                         <Button asChild variant="outline" size="sm">
@@ -380,5 +381,7 @@ export default function TripPage() {
         </div>
     );
 }
+
+    
 
     
