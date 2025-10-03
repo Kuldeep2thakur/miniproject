@@ -167,14 +167,19 @@ export default function NewTripPage() {
 
     } catch (serverError: any) {
         console.error("Error creating trip:", serverError);
+        // This is a generic catch block, a permission error is only one possibility.
+        // We'll emit a permission error for the debug overlay,
+        // but also show a generic toast to the user.
         const newTripData = { ...data, ownerId: user.uid };
         const tripsCollection = collection(firestore, 'trips');
+        
+        // This assumes it's a permission error, which might not be correct.
+        // But it's useful for debugging security rules.
         const permissionError = new FirestorePermissionError({
           path: tripsCollection.path,
           operation: 'create',
           requestResourceData: newTripData,
         });
-
         errorEmitter.emit('permission-error', permissionError);
 
         toast({
