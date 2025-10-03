@@ -43,7 +43,7 @@ const EditEntrySchema = z.object({
   visitedAt: z.date({
     required_error: "A date for this entry is required.",
   }),
-  media: z.instanceof(FileList).optional(),
+  media: z.any().optional(),
 });
 
 
@@ -99,7 +99,7 @@ export default function EditEntryPage() {
         let newMediaUrls: string[] = [];
         if (data.media && data.media.length > 0) {
             newMediaUrls = await Promise.all(
-                Array.from(data.media).map(async (file) => {
+                Array.from(data.media).map(async (file: any) => {
                     const fileRef = ref(storage, `users/${user.uid}/${tripId}/${entryId}/${file.name}`);
                     await uploadBytes(fileRef, file);
                     return await getDownloadURL(fileRef);
@@ -300,5 +300,3 @@ export default function EditEntryPage() {
     </div>
   );
 }
-
-    

@@ -24,8 +24,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useUser, useStorage } from '@/firebase';
-import { addDoc, collection, serverTimestamp, doc } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { addDoc, collection, serverTimestamp, doc, setDoc } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CalendarIcon, Paperclip } from 'lucide-react';
@@ -41,7 +41,7 @@ const NewEntrySchema = z.object({
   visitedAt: z.date({
     required_error: "A date for this entry is required.",
   }),
-  media: z.instanceof(FileList).optional(),
+  media: z.any().optional(),
 });
 
 
@@ -83,7 +83,7 @@ export default function NewEntryPage() {
         let mediaUrls: string[] = [];
         if (data.media && data.media.length > 0) {
             mediaUrls = await Promise.all(
-                Array.from(data.media).map(async (file) => {
+                Array.from(data.media).map(async (file: any) => {
                     const fileRef = ref(storage, `users/${user.uid}/${tripId}/${entryId}/${file.name}`);
                     await uploadBytes(fileRef, file);
                     return await getDownloadURL(fileRef);
@@ -103,7 +103,7 @@ export default function NewEntryPage() {
         };
         
         // Use setDoc with the pre-created ref
-        await addDoc(entriesCollection, newEntryData)
+        await setDoc(newEntryRef, newEntryData)
           .catch(error => {
             console.error("Error creating document: ", error);
           });
@@ -260,5 +260,3 @@ export default function NewEntryPage() {
     </div>
   );
 }
-
-    
