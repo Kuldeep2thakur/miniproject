@@ -93,8 +93,6 @@ export default function NewEntryPage() {
             authorId: user.uid,
             createdAt: serverTimestamp(),
             media: mediaURLs,
-        }).catch(error => {
-            console.error("Error creating document: ", error);
         });
 
         toast({
