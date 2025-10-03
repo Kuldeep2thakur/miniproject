@@ -157,35 +157,37 @@ export default function NewTripPage() {
 
       const tripsCollection = collection(firestore, 'trips');
       
-      const docRef = await addDoc(tripsCollection, newTripData);
+      addDoc(tripsCollection, newTripData)
+        .then((docRef) => {
+            toast({
+                title: "Trip Created!",
+                description: "Your new trip has been successfully created.",
+            });
+            router.push("/dashboard");
+        })
+        .catch((serverError) => {
+            console.error("Error creating trip:", serverError);
 
-      toast({
-        title: "Trip Created!",
-        description: "Your new trip has been successfully created.",
-      });
-      router.push("/dashboard");
+            const permissionError = new FirestorePermissionError({
+              path: tripsCollection.path,
+              operation: 'create',
+              requestResourceData: newTripData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
 
-    } catch (serverError: any) {
-        console.error("Error creating trip:", serverError);
-        // This is a generic catch block, a permission error is only one possibility.
-        // We'll emit a permission error for the debug overlay,
-        // but also show a generic toast to the user.
-        const newTripData = { ...data, ownerId: user.uid };
-        const tripsCollection = collection(firestore, 'trips');
-        
-        // This assumes it's a permission error, which might not be correct.
-        // But it's useful for debugging security rules.
-        const permissionError = new FirestorePermissionError({
-          path: tripsCollection.path,
-          operation: 'create',
-          requestResourceData: newTripData,
+            toast({
+                variant: "destructive",
+                title: "Error Creating Trip",
+                description: serverError.message || "There was a problem creating your trip. Please check your permissions and try again.",
+            });
         });
-        errorEmitter.emit('permission-error', permissionError);
 
+    } catch (clientError: any) {
+        console.error("Error during trip creation process:", clientError);
         toast({
             variant: "destructive",
-            title: "Error Creating Trip",
-            description: serverError.message || "There was a problem creating your trip. Please try again.",
+            title: "Something Went Wrong",
+            description: clientError.message || "An unexpected error occurred. Please try again.",
         });
     }
   };
@@ -419,3 +421,5 @@ export default function NewTripPage() {
     </div>
   );
 }
+
+    
