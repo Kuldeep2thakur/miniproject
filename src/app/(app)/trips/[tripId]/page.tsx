@@ -9,7 +9,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Edit, Globe, Lock, PlusCircle, Users, File, Video } from 'lucide-react';
+import { ArrowLeft, Calendar, Edit, Globe, Lock, PlusCircle, Users, File, Video, PlayCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -270,13 +270,14 @@ export default function TripPage() {
                                                                 ) : isVideo ? (
                                                                      <Dialog>
                                                                         <DialogTrigger asChild>
-                                                                             <button className="aspect-square w-full rounded-md overflow-hidden bg-muted flex flex-col items-center justify-center text-center p-2 group">
-                                                                                <Video className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
-                                                                                <p className="text-xs text-muted-foreground truncate mt-1 group-hover:text-primary transition-colors">Play Video</p>
-                                                                            </button>
+                                                                             <button className="relative group aspect-square w-full rounded-md overflow-hidden bg-muted flex items-center justify-center text-white focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                                                                                <video src={`${mediaUrl}#t=0.1`} muted playsInline className="object-cover w-full h-full" />
+                                                                                <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-colors" />
+                                                                                <PlayCircle className="absolute h-10 w-10 transform group-hover:scale-110 transition-transform" />
+                                                                             </button>
                                                                         </DialogTrigger>
                                                                         <DialogContent className="max-w-4xl max-h-[90vh] p-0">
-                                                                                <video src={mediaUrl} controls className="w-full h-full" />
+                                                                                <video src={mediaUrl} controls autoPlay className="w-full h-full" />
                                                                         </DialogContent>
                                                                     </Dialog>
                                                                 ) : (
