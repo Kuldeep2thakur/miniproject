@@ -18,6 +18,41 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 
 const getInitials = (name: string) => name ? name.split(' ').map(n => n[0]).join('') : '';
 
+function AuthorAvatar({ authorId }: { authorId: string }) {
+    const firestore = useFirestore();
+    const authorRef = useMemoFirebase(() => {
+        if (!firestore || !authorId) return null;
+        return doc(firestore, 'users', authorId);
+    }, [firestore, authorId]);
+    const { data: author, isLoading } = useDoc<TripUser>(authorRef);
+
+    if (isLoading) {
+        return <Skeleton className="h-6 w-6 rounded-full" />;
+    }
+
+    if (!author) {
+        return null;
+    }
+
+    const authorName = author.displayName || author.email || author.id;
+
+    return (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger>
+                    <Avatar className="h-6 w-6">
+                        {author.photoURL && <AvatarImage src={author.photoURL} alt={authorName} />}
+                        <AvatarFallback>{getInitials(authorName)}</AvatarFallback>
+                    </Avatar>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>{authorName}</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
+}
+
 function SharedWithAvatars({ trip }: { trip: Trip }) {
     const firestore = useFirestore();
 
@@ -219,7 +254,15 @@ export default function TripPage() {
                                                 <div className="flex justify-between items-start">
                                                     <div>
                                                         <h3 className="text-lg font-semibold">{entry.title}</h3>
-                                                        <p className="text-sm text-muted-foreground mb-2">{format(visitedDate, 'PPP')}</p>
+                                                        <p className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
+                                                            {format(visitedDate, 'PPP')}
+                                                            {entry.authorId && (
+                                                                <>
+                                                                    <span>&middot;</span>
+                                                                    <AuthorAvatar authorId={entry.authorId} />
+                                                                </>
+                                                            )}
+                                                        </p>
                                                     </div>
                                                      {canEditEntry && (
                                                         <Button asChild variant="outline" size="sm">
@@ -337,3 +380,5 @@ export default function TripPage() {
         </div>
     );
 }
+
+    
