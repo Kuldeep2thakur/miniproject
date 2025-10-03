@@ -39,13 +39,13 @@ function SharedWithAvatars({ trip }: { trip: Trip }) {
                 <TooltipProvider>
                     {sharedUsers.map(user => {
                         const avatar = PlaceHolderImages.find(p => p.id === `avatar-${(parseInt(user.id, 36) % 3) + 1}`);
-                        const userName = user.name || user.id;
+                        const userName = user.displayName || user.email || user.id;
 
                         return (
                             <Tooltip key={user.id}>
                                 <TooltipTrigger asChild>
                                     <Avatar className="border-2 border-background h-8 w-8">
-                                        {avatar && <AvatarImage src={avatar.imageUrl} alt={userName} />}
+                                        {user.photoURL && <AvatarImage src={user.photoURL} alt={userName} />}
                                         <AvatarFallback>{getInitials(userName)}</AvatarFallback>
                                     </Avatar>
                                 </TooltipTrigger>
@@ -259,7 +259,6 @@ export default function TripPage() {
                                                                                  <Image 
                                                                                     src={mediaUrl} 
                                                                                     alt={`Media for ${entry.title}`}
-                                                                                    layout="responsive"
                                                                                     width={1600}
                                                                                     height={900}
                                                                                     className="object-contain w-full h-full"
@@ -293,12 +292,14 @@ export default function TripPage() {
                              <div className="text-center py-16 border-2 border-dashed rounded-lg">
                                 <h2 className="text-xl font-semibold">No entries yet!</h2>
                                 <p className="text-muted-foreground mt-2 mb-6">Start your diary by adding your first entry.</p>
-                                <Button asChild>
-                                    <Link href={`/trips/${tripId}/new`}>
-                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                        Add First Entry
-                                    </Link>
-                                </Button>
+                                {canAddEntry && (
+                                    <Button asChild>
+                                        <Link href={`/trips/${tripId}/new`}>
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Add First Entry
+                                        </Link>
+                                    </Button>
+                                )}
                             </div>
                         )}
 

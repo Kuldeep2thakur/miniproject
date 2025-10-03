@@ -121,7 +121,10 @@ export default function EditEntryPage() {
           media: combinedMedia,
         };
         
-        await updateDoc(entryRef, updatedEntryData);
+        updateDoc(entryRef, updatedEntryData)
+          .catch(error => {
+            console.error("Error updating document: ", error);
+          });
         
         toast({
             title: "Entry Updated",

@@ -101,7 +101,10 @@ export default function NewEntryPage() {
           createdAt: serverTimestamp(),
         };
         
-        await addDoc(entriesCollection, newEntryData);
+        addDoc(entriesCollection, newEntryData)
+          .catch(error => {
+            console.error("Error creating document: ", error);
+          });
 
         toast({
           title: "Entry Saved",
