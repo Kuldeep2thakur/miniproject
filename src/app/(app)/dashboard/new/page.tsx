@@ -82,15 +82,6 @@ import { FirestorePermissionError } from "@/firebase/errors";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
-
 const NewTripFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),

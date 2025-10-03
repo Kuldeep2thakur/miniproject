@@ -34,22 +34,12 @@ import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from '@/hooks/use-toast';
 
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
-
 const NewEntrySchema = z.object({
   title: z.string().min(1, 'Title is required'),
   content: z.string().min(1, 'Content is required'),
   visitedAt: z.date({
     required_error: "A date for this entry is required.",
   }),
-  media: z.any().optional(),
 });
 
 
@@ -81,19 +71,11 @@ export default function NewEntryPage() {
     setIsSubmitting(true);
 
     try {
-        let mediaUrls: string[] = [];
-        if (data.media && data.media.length > 0) {
-            mediaUrls = await Promise.all(
-                Array.from(data.media as FileList).map(file => fileToDataUrl(file))
-            );
-        }
-
         const entriesCollection = collection(firestore, 'trips', tripId as string, 'entries');
         await addDoc(entriesCollection, {
             title: data.title,
             content: data.content,
             visitedAt: data.visitedAt,
-            media: mediaUrls,
             tripId: tripId,
             authorId: user.uid,
             createdAt: serverTimestamp(),
@@ -213,35 +195,6 @@ export default function NewEntryPage() {
                   </FormItem>
                 )}
               />
-
-               <FormField
-                control={form.control}
-                name="media"
-                render={({ field: { onChange, ...rest } }) => (
-                  <FormItem>
-                    <FormLabel>Attach Photos & Vlogs</FormLabel>
-                    <FormControl>
-                        <div className="relative">
-                            <Paperclip className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                            <Input
-                                {...rest}
-                                value={undefined}
-                                type="file" 
-                                multiple
-                                accept="image/*,video/*"
-                                className="pl-10"
-                                onChange={(e) => onChange(e.target.files)}
-                            />
-                        </div>
-                    </FormControl>
-                    <FormDescription>
-                      You can select multiple image or video files.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
 
               <Button type="submit" disabled={isSubmitting} className="w-full">
                 {isSubmitting ? 'Saving...' : 'Save Entry'}
