@@ -268,10 +268,17 @@ export default function TripPage() {
                                                                         </DialogContent>
                                                                     </Dialog>
                                                                 ) : isVideo ? (
-                                                                    <a href={mediaUrl} target="_blank" rel="noopener noreferrer" className="aspect-square w-full rounded-md overflow-hidden bg-muted flex flex-col items-center justify-center text-center p-2 group">
-                                                                        <Video className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
-                                                                         <p className="text-xs text-muted-foreground truncate mt-1 group-hover:text-primary transition-colors">Play Video</p>
-                                                                    </a>
+                                                                     <Dialog>
+                                                                        <DialogTrigger asChild>
+                                                                             <button className="aspect-square w-full rounded-md overflow-hidden bg-muted flex flex-col items-center justify-center text-center p-2 group">
+                                                                                <Video className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+                                                                                <p className="text-xs text-muted-foreground truncate mt-1 group-hover:text-primary transition-colors">Play Video</p>
+                                                                            </button>
+                                                                        </DialogTrigger>
+                                                                        <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+                                                                                <video src={mediaUrl} controls className="w-full h-full" />
+                                                                        </DialogContent>
+                                                                    </Dialog>
                                                                 ) : (
                                                                     <div className="aspect-square w-full rounded-md overflow-hidden bg-muted flex flex-col items-center justify-center text-center p-2">
                                                                         <File className="h-8 w-8 text-muted-foreground" />
