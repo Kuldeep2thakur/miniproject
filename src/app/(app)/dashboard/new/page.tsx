@@ -73,7 +73,6 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList
 } from "@/components/ui/command";
@@ -157,38 +156,37 @@ export default function NewTripPage() {
 
       const tripsCollection = collection(firestore, 'trips');
       
-      addDoc(tripsCollection, newTripData)
-        .then((docRef) => {
-            toast({
-                title: "Trip Created!",
-                description: "Your new trip has been successfully created.",
-            });
-            router.push("/dashboard");
-        })
-        .catch((serverError) => {
-            console.error("Error creating trip:", serverError);
+      const docRef = await addDoc(tripsCollection, newTripData);
 
+      toast({
+          title: "Trip Created!",
+          description: "Your new trip has been successfully created.",
+      });
+      router.push("/dashboard");
+
+    } catch (error: any) {
+        console.error("Error creating trip:", error);
+
+        if (error.code && error.code.startsWith('storage/')) {
+             toast({
+                variant: "destructive",
+                title: "Storage Error",
+                description: error.message || "There was a problem uploading your thumbnail.",
+            });
+        } else {
+            const tripsCollection = collection(firestore, 'trips');
             const permissionError = new FirestorePermissionError({
               path: tripsCollection.path,
               operation: 'create',
-              requestResourceData: newTripData,
             });
             errorEmitter.emit('permission-error', permissionError);
 
             toast({
                 variant: "destructive",
                 title: "Error Creating Trip",
-                description: serverError.message || "There was a problem creating your trip. Please check your permissions and try again.",
+                description: error.message || "There was a problem creating your trip. Please check your permissions and try again.",
             });
-        });
-
-    } catch (clientError: any) {
-        console.error("Error during trip creation process:", clientError);
-        toast({
-            variant: "destructive",
-            title: "Something Went Wrong",
-            description: clientError.message || "An unexpected error occurred. Please try again.",
-        });
+        }
     }
   };
 
@@ -421,5 +419,3 @@ export default function NewTripPage() {
     </div>
   );
 }
-
-    
