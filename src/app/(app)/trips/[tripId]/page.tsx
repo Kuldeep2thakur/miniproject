@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useEffect } from 'react';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 const getInitials = (name: string) => name ? name.split(' ').map(n => n[0]).join('') : '';
@@ -268,7 +268,10 @@ export default function TripPage() {
                                                                                 className="rounded-lg object-cover w-full h-64 cursor-pointer"
                                                                             />
                                                                         </DialogTrigger>
-                                                                        <DialogContent className="max-w-4xl p-0">
+                                                                        <DialogContent className="max-w-4xl">
+                                                                            <DialogHeader>
+                                                                                <DialogTitle>{entry.title} - Photo {index + 1}</DialogTitle>
+                                                                            </DialogHeader>
                                                                             <Image
                                                                                 src={url}
                                                                                 alt={`Entry photo ${index + 1}`}
