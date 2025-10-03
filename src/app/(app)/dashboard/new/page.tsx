@@ -157,7 +157,7 @@ export default function NewTripPage() {
 
       const tripsCollection = collection(firestore, 'trips');
       
-      const docRef = await addDoc(tripsCollection, newTripData);
+      await addDoc(tripsCollection, newTripData);
 
       toast({
           title: "Trip Created!",
@@ -167,18 +167,18 @@ export default function NewTripPage() {
 
     } catch (error: any) {
         console.error("Error creating trip:", error);
-
+        
         if (error.code && error.code.startsWith('storage/')) {
-             toast({
+            toast({
                 variant: "destructive",
                 title: "Storage Error",
                 description: error.message || "There was a problem uploading your thumbnail.",
             });
         } else {
-            const tripsCollection = collection(firestore, 'trips');
             const permissionError = new FirestorePermissionError({
-              path: tripsCollection.path,
+              path: `trips`,
               operation: 'create',
+              requestResourceData: data
             });
             errorEmitter.emit('permission-error', permissionError);
 
@@ -420,3 +420,5 @@ export default function NewTripPage() {
     </div>
   );
 }
+
+    
