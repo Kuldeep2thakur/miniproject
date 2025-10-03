@@ -6,7 +6,8 @@ export type Trip = {
   startDate: string;
   endDate:string;
   description: string;
-  coverPhotoId: string;
+  coverPhotoId?: string;
+  coverPhotoURL?: string; // Added for custom thumbnails
   visibility: 'private' | 'public' | 'shared';
   sharedWith?: string[];
   ownerId?: string;

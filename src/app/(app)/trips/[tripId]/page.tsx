@@ -152,7 +152,10 @@ export default function TripPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const coverPhoto = trip ? PlaceHolderImages.find(p => p.id === trip.coverPhotoId) : null;
+    const placeholderPhoto = trip?.coverPhotoId ? PlaceHolderImages.find(p => p.id === trip.coverPhotoId) : PlaceHolderImages.find(p => p.id === 'trip-cover-1');
+    const coverPhotoURL = trip?.coverPhotoURL || placeholderPhoto?.imageUrl;
+    const coverPhotoAlt = placeholderPhoto?.description || 'Trip cover image';
+    const coverPhotoHint = placeholderPhoto?.imageHint || 'travel landscape';
 
     if (isLoadingTrip || isUserLoading) {
         return (
@@ -184,29 +187,29 @@ export default function TripPage() {
     const isOwner = user?.uid === trip.ownerId;
     const canAddEntry = isOwner || (trip.visibility === 'shared' && trip.sharedWith?.includes(user?.uid || ''));
 
-    const isMediaImage = (url: string) => url.startsWith('data:image');
+    const isMediaImage = (url: string) => url.startsWith('data:image') || url.startsWith('https://firebasestorage.googleapis.com');
     const isMediaVideo = (url: string) => url.startsWith('data:video');
 
     return (
         <div className="min-h-screen">
              <header className="relative h-64 md:h-80 w-full">
-                {coverPhoto && (
+                {coverPhotoURL && (
                     <Image
-                        src={coverPhoto.imageUrl}
-                        alt={coverPhoto.description}
+                        src={coverPhotoURL}
+                        alt={coverPhotoAlt}
                         fill
                         className="object-cover"
                         priority
-                        data-ai-hint={coverPhoto.imageHint}
+                        data-ai-hint={coverPhotoHint}
                     />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                 <div className="absolute bottom-0 left-0 p-4 sm:p-6 lg:p-8 text-white">
                     <h1 className="font-headline text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">{trip.title}</h1>
-                    <p className="flex items-center text-lg mt-2 text-gray-200">
+                    <div className="flex items-center text-lg mt-2 text-gray-200">
                         <Calendar className="h-5 w-5 mr-2" />
-                        {trip.startDate} - {trip.endDate}
-                    </p>
+                        {trip.startDate instanceof Date ? format(trip.startDate, 'MMM dd, yyyy') : trip.startDate} - {trip.endDate instanceof Date ? format(trip.endDate, 'MMM dd, yyyy') : trip.endDate}
+                    </div>
                 </div>
                 {isOwner && (
                     <div className="absolute top-4 right-4 flex gap-2">

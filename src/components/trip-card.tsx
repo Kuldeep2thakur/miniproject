@@ -84,9 +84,12 @@ function SharedWithAvatars({ trip }: { trip: Trip }) {
 
 
 export function TripCard({ trip }: TripCardProps) {
-  const coverPhoto = PlaceHolderImages.find(p => p.id === trip.coverPhotoId);
+  const placeholderPhoto = trip.coverPhotoId ? PlaceHolderImages.find(p => p.id === trip.coverPhotoId) : PlaceHolderImages.find(p => p.id === 'trip-cover-1');
+  const coverPhotoURL = trip.coverPhotoURL || placeholderPhoto?.imageUrl;
+  const coverPhotoAlt = placeholderPhoto?.description || 'Trip cover image';
+  const coverPhotoHint = placeholderPhoto?.imageHint || 'travel landscape';
+  
   const { user } = useUser();
-
   const isOwner = user?.uid === trip.ownerId;
 
 
@@ -94,14 +97,14 @@ export function TripCard({ trip }: TripCardProps) {
     <Card className="flex flex-col overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 group">
       <CardHeader className="p-0 relative">
         <Link href={`/trips/${trip.id}`}>
-          {coverPhoto && (
+          {coverPhotoURL && (
             <Image
-              src={coverPhoto.imageUrl}
-              alt={coverPhoto.description}
+              src={coverPhotoURL}
+              alt={coverPhotoAlt}
               width={600}
               height={400}
               className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-              data-ai-hint={coverPhoto.imageHint}
+              data-ai-hint={coverPhotoHint}
             />
           )}
         </Link>

@@ -7,7 +7,8 @@ import {
   useRouter
 } from "next/navigation";
 import {
-  useEffect
+  useEffect,
+  useState
 } from "react";
 import {
   addDoc
@@ -63,7 +64,8 @@ import {
 import {
   CalendarIcon,
   Check,
-  ChevronsUpDown
+  ChevronsUpDown,
+  Paperclip
 } from "lucide-react";
 import {
   Calendar
@@ -79,6 +81,16 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { errorEmitter } from "@/firebase/error-emitter";
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
 
 const NewTripFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -90,6 +102,7 @@ const NewTripFormSchema = z.object({
     required_error: "An end date is required.",
   }),
   visibility: z.enum(["private", "public", "shared"]),
+  thumbnail: z.any().optional(),
 });
 
 const visibilityOptions = [{
@@ -130,25 +143,44 @@ export default function NewTripPage() {
   const onSubmit = async (data: z.infer < typeof NewTripFormSchema > ) => {
     if (!user || !firestore) return;
 
-    const newTripData = {
-      ...data,
-      ownerId: user.uid,
-      coverPhotoId: `trip-cover-${Math.floor(Math.random() * 6) + 1}`,
-      startDate: format(data.startDate, "MMM dd, yyyy"),
-      endDate: format(data.endDate, "MMM dd, yyyy"),
-    };
+    form.formState.isSubmitting = true;
 
-    const tripsCollection = collection(firestore, 'trips');
-    
-    addDoc(tripsCollection, newTripData)
-      .then((docRef) => {
-        toast({
-          title: "Trip Created!",
-          description: "Your new trip has been successfully created.",
-        });
-        router.push("/dashboard");
-      })
-      .catch((serverError) => {
+    try {
+      let coverPhotoURL: string | undefined = undefined;
+
+      if (data.thumbnail && data.thumbnail.length > 0) {
+        const file = data.thumbnail[0] as File;
+        const storage = getStorage();
+        const storageRef = ref(storage, `trip-thumbnails/${user.uid}/${Date.now()}-${file.name}`);
+        await uploadBytes(storageRef, file);
+        coverPhotoURL = await getDownloadURL(storageRef);
+      }
+
+      const newTripData = {
+        title: data.title,
+        description: data.description,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        visibility: data.visibility,
+        ownerId: user.uid,
+        coverPhotoURL: coverPhotoURL,
+        coverPhotoId: !coverPhotoURL ? `trip-cover-${Math.floor(Math.random() * 6) + 1}` : undefined,
+      };
+
+      const tripsCollection = collection(firestore, 'trips');
+      
+      const docRef = await addDoc(tripsCollection, newTripData);
+
+      toast({
+        title: "Trip Created!",
+        description: "Your new trip has been successfully created.",
+      });
+      router.push("/dashboard");
+
+    } catch (serverError: any) {
+        console.error("Error creating trip:", serverError);
+        const newTripData = { ...data, ownerId: user.uid };
+        const tripsCollection = collection(firestore, 'trips');
         const permissionError = new FirestorePermissionError({
           path: tripsCollection.path,
           operation: 'create',
@@ -159,10 +191,12 @@ export default function NewTripPage() {
 
         toast({
             variant: "destructive",
-            title: "Error",
-            description: "There was a problem creating your trip. Please try again.",
+            title: "Error Creating Trip",
+            description: serverError.message || "There was a problem creating your trip. Please try again.",
         });
-    });
+    } finally {
+        form.formState.isSubmitting = false;
+    }
   };
 
   if (isUserLoading) {
@@ -292,6 +326,33 @@ export default function NewTripPage() {
                   )}
                 />
               </div>
+
+               <FormField
+                control={form.control}
+                name="thumbnail"
+                render={({ field: { onChange, ...rest } }) => (
+                  <FormItem>
+                    <FormLabel>Trip Thumbnail</FormLabel>
+                    <FormControl>
+                        <div className="relative">
+                            <Paperclip className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input
+                                {...rest}
+                                value={undefined}
+                                type="file" 
+                                accept="image/*"
+                                className="pl-10"
+                                onChange={(e) => onChange(e.target.files)}
+                            />
+                        </div>
+                    </FormControl>
+                    <FormDescription>
+                      Upload a cover image for your trip.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
