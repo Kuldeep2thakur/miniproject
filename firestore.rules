@@ -28,6 +28,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Allow authenticated users to read root-level collections
+    // WARNING: This is a development-only rule, remove in production
+    match /{document=**} {
+      allow read: if request.auth != null;
+    }
 
     /**
      * @description Secure user profiles. Only the authenticated user can read/write their own profile.
@@ -38,15 +43,40 @@ service cloud.firestore {
      * @deny (create) if request.auth.uid != request.resource.data.id
      * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
      */
+    // Helper functions for general use
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Root /trips collection rules
+    match /trips/{tripId} {
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow read: if isSignedIn() && (
+        resource.data.visibility == 'public' || 
+        resource.data.ownerId == request.auth.uid || 
+        (resource.data.visibility == 'shared' && resource.data.sharedWith.hasAny([request.auth.uid]))
+      );
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+      // Entries subcollection rules
+      match /entries/{entryId} {
+        allow create: if isSignedIn() && get(/databases/$(database)/documents/trips/$(tripId)).data.ownerId == request.auth.uid;
+        allow read: if isSignedIn() && (
+          get(/databases/$(database)/documents/trips/$(tripId)).data.visibility == 'public' ||
+          get(/databases/$(database)/documents/trips/$(tripId)).data.ownerId == request.auth.uid ||
+          (get(/databases/$(database)/documents/trips/$(tripId)).data.visibility == 'shared' && 
+           get(/databases/$(database)/documents/trips/$(tripId)).data.sharedWith.hasAny([request.auth.uid]))
+        );
+        allow update, delete: if isSignedIn() && get(/databases/$(database)/documents/trips/$(tripId)).data.ownerId == request.auth.uid;
+      }
+    }
+
+    // User profile rules
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       allow get: if isOwner(userId);
       allow list: if false;
 

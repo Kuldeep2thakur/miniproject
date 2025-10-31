@@ -64,8 +64,10 @@ import {
   CalendarIcon,
   Check,
   ChevronsUpDown,
-  Paperclip
+  Paperclip,
+  MapPin
 } from "lucide-react";
+import { LocationPicker } from "@/components/location-picker";
 import {
   Calendar
 } from "@/components/ui/calendar";
@@ -80,7 +82,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { errorEmitter } from "@/firebase/error-emitter";
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 const NewTripFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -93,6 +95,13 @@ const NewTripFormSchema = z.object({
   }),
   visibility: z.enum(["private", "public", "shared"]),
   thumbnail: z.any().optional(),
+  location: z.object({
+    name: z.string(),
+    coordinates: z.object({
+      lat: z.number(),
+      lng: z.number()
+    })
+  }).optional(),
 });
 
 const visibilityOptions = [{
@@ -138,24 +147,24 @@ export default function NewTripPage() {
 
       if (data.thumbnail && data.thumbnail.length > 0) {
         const file = data.thumbnail[0] as File;
-        const storage = getStorage();
-        const storageRef = ref(storage, `trip-thumbnails/${user.uid}/${Date.now()}-${file.name}`);
-        await uploadBytes(storageRef, file);
-        coverPhotoURL = await getDownloadURL(storageRef);
+        const uploaded = await uploadToCloudinary(file);
+        // uploaded.secure_url is the canonical https URL
+        coverPhotoURL = uploaded.secure_url || uploaded.url;
       }
 
-      const newTripData = {
+      const newTripData: any = {
         title: data.title,
         description: data.description,
-        startDate: data.startDate,
-        endDate: data.endDate,
+        startDate: data.startDate.toISOString(),
+        endDate: data.endDate.toISOString(),
         visibility: data.visibility,
         ownerId: user.uid,
-        coverPhotoURL: coverPhotoURL,
-        coverPhotoId: !coverPhotoURL ? `trip-cover-${Math.floor(Math.random() * 6) + 1}` : undefined,
+        coverPhotoId: !coverPhotoURL ? 'trip-cover-1' : 'uploaded-cover',
+        coverPhotoURL: coverPhotoURL || '/placeholder-trip.jpg',
+        location: data.location // Add the location data if provided
       };
 
-      const tripsCollection = collection(firestore, 'trips');
+      const tripsCollection = collection(firestore, `users/${user.uid}/trips`);
       
       await addDoc(tripsCollection, newTripData);
 
@@ -192,7 +201,7 @@ export default function NewTripPage() {
   };
 
   if (isUserLoading) {
-    return < p > Loading... < /p>;
+    return <p>Loading...</p>;
   }
 
   return (
@@ -340,6 +349,31 @@ export default function NewTripPage() {
                     </FormControl>
                     <FormDescription>
                       Upload a cover image for your trip.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Trip Location</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <LocationPicker
+                            onLocationSelect={(location) => field.onChange(location)}
+                            defaultLocation={field.value}
+                          />
+                        </div>
+                      </div>
+                    </FormControl>
+                    <FormDescription>
+                      Pin the main location of your trip on the map or search for a place.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

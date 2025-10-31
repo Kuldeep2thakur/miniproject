@@ -31,4 +31,11 @@ export type Entry = {
     createdAt?: Timestamp | Date | string;
     authorId?: string;
     media?: string[];
+    location?: {
+        name: string;
+        coordinates: {
+            lat: number;
+            lng: number;
+        };
+    };
 }

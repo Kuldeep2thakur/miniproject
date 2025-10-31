@@ -7,10 +7,12 @@ import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { Trip, Entry, User as TripUser } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { MediaDisplay } from '@/components/media-display';
+import { MapView } from '@/components/map-view';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Edit, Globe, Lock, PlusCircle, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Edit, Globe, Lock, MapPin, PlusCircle, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -134,16 +136,16 @@ export default function TripPage() {
     const { user, isUserLoading } = useUser();
 
     const tripRef = useMemoFirebase(() => {
-        if (!firestore || !tripId) return null;
-        return doc(firestore, 'trips', tripId as string);
-    }, [firestore, tripId]);
+        if (!firestore || !tripId || !user) return null;
+        return doc(firestore, `users/${user.uid}/trips`, tripId as string);
+    }, [firestore, tripId, user]);
 
     const { data: trip, isLoading: isLoadingTrip } = useDoc<Trip>(tripRef);
 
     const entriesQuery = useMemoFirebase(() => {
-        if (!tripRef) return null;
-        return query(collection(tripRef, 'entries'), orderBy('visitedAt', 'desc'));
-    }, [tripRef]);
+        if (!tripRef || !user) return null;
+        return query(collection(firestore, `users/${user.uid}/trips/${tripId}/entries`), orderBy('visitedAt', 'desc'));
+    }, [tripRef, user, firestore, tripId]);
     
     const { data: entries, isLoading: isLoadingEntries } = useCollection<Entry>(entriesQuery);
 
@@ -252,58 +254,34 @@ export default function TripPage() {
 
                                     return (
                                         <div key={entry.id} className="bg-card p-4 rounded-lg shadow-sm border space-y-4">
-                                            {entry.media && entry.media.length > 0 && (
-                                                <div className="relative">
-                                                     <Carousel>
-                                                        <CarouselContent>
-                                                            {entry.media.map((url, index) => (
-                                                                <CarouselItem key={index}>
-                                                                    <Dialog>
-                                                                        <DialogTrigger asChild>
-                                                                            <Image 
-                                                                                src={url}
-                                                                                alt={`Entry photo ${index + 1}`}
-                                                                                width={800}
-                                                                                height={600}
-                                                                                className="rounded-lg object-cover w-full h-64 cursor-pointer"
-                                                                            />
-                                                                        </DialogTrigger>
-                                                                        <DialogContent className="max-w-4xl">
-                                                                            <DialogHeader>
-                                                                                <DialogTitle>{entry.title} - Photo {index + 1}</DialogTitle>
-                                                                            </DialogHeader>
-                                                                            <Image
-                                                                                src={url}
-                                                                                alt={`Entry photo ${index + 1}`}
-                                                                                width={1600}
-                                                                                height={1200}
-                                                                                className="rounded-lg object-contain w-full"
-                                                                            />
-                                                                        </DialogContent>
-                                                                    </Dialog>
-                                                                </CarouselItem>
-                                                            ))}
-                                                        </CarouselContent>
-                                                        {entry.media.length > 1 && (
-                                                            <>
-                                                                <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2" />
-                                                                <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2" />
-                                                            </>
-                                                        )}
-                                                    </Carousel>
-                                                </div>
-                                            )}
+                                            <div className="space-y-4">
+                                                {entry.media && entry.media.length > 0 && (
+                                                    <MediaDisplay media={entry.media} title={entry.title} />
+                                                )}
+                                                {entry.location && (
+                                                    <MapView location={entry.location} />
+                                                )}
+                                            </div>
                                             <div>
                                                 <div className="flex justify-between items-start">
                                                     <div>
                                                         <h3 className="text-lg font-semibold">{entry.title}</h3>
-                                                        <div className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
-                                                            {format(visitedDate, 'PPP')}
-                                                            {entry.authorId && (
-                                                                <>
-                                                                    <span>&middot;</span>
-                                                                    <AuthorAvatar authorId={entry.authorId} />
-                                                                </>
+                                                        <div className="text-sm text-muted-foreground mb-2 space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <Calendar className="h-4 w-4" />
+                                                                {format(visitedDate, 'PPP')}
+                                                                {entry.authorId && (
+                                                                    <>
+                                                                        <span>&middot;</span>
+                                                                        <AuthorAvatar authorId={entry.authorId} />
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                            {entry.location && (
+                                                                <div className="flex items-center gap-2">
+                                                                    <MapPin className="h-4 w-4" />
+                                                                    {entry.location.name}
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </div>

@@ -1,17 +1,20 @@
 'use client';
 import { TripCard } from "@/components/trip-card";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { collectionGroup, query, where } from "firebase/firestore";
 import { Trip } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ExplorePage() {
     const firestore = useFirestore();
 
-    const publicTripsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'trips'), where('visibility', '==', 'public'));
-    }, [firestore]);
+  const publicTripsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    // Use a collectionGroup query to read trips stored under each user's
+    // `users/{userId}/trips` subcollection. This matches your security rules
+    // which protect per-user trips while allowing public visibility.
+    return query(collectionGroup(firestore, 'trips'), where('visibility', '==', 'public'));
+  }, [firestore]);
 
     const { data: publicTrips, isLoading: isLoadingPublicTrips } = useCollection<Trip>(publicTripsQuery);
     

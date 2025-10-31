@@ -27,13 +27,14 @@ import { useFirestore, useUser } from '@/firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CalendarIcon, Paperclip } from 'lucide-react';
+import { ArrowLeft, CalendarIcon, Paperclip, MapPin } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { LocationPicker } from '@/components/location-picker';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from '@/hooks/use-toast';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 const NewEntrySchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -42,6 +43,13 @@ const NewEntrySchema = z.object({
     required_error: "A date for this entry is required.",
   }),
   media: z.any().optional(),
+  location: z.object({
+    name: z.string(),
+    coordinates: z.object({
+      lat: z.number(),
+      lng: z.number()
+    })
+  }).optional(),
 });
 
 
@@ -74,17 +82,16 @@ export default function NewEntryPage() {
 
     try {
         let mediaURLs: string[] = [];
-        if (data.media && data.media.length > 0) {
-            const storage = getStorage();
-            for (const file of Array.from(data.media as FileList)) {
-                const storageRef = ref(storage, `trip-media/${tripId}/${user.uid}/${Date.now()}-${file.name}`);
-                await uploadBytes(storageRef, file);
-                const downloadURL = await getDownloadURL(storageRef);
-                mediaURLs.push(downloadURL);
-            }
-        }
+    if (data.media && data.media.length > 0) {
+      for (const file of Array.from(data.media as FileList)) {
+        const uploaded = await uploadToCloudinary(file as File);
+        const downloadURL = uploaded.secure_url || uploaded.url;
+        mediaURLs.push(downloadURL);
+      }
+    }
 
-        const entriesCollection = collection(firestore, 'trips', tripId as string, 'entries');
+        // Create entry in the user's trips subcollection
+        const entriesCollection = collection(firestore, `users/${user.uid}/trips/${tripId}/entries`);
         await addDoc(entriesCollection, {
             title: data.title,
             content: data.content,
@@ -93,6 +100,7 @@ export default function NewEntryPage() {
             authorId: user.uid,
             createdAt: serverTimestamp(),
             media: mediaURLs,
+            ownerId: user.uid, // Add owner ID for security rules
         });
 
         toast({
@@ -210,10 +218,35 @@ export default function NewEntryPage() {
               
               <FormField
                 control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <LocationPicker
+                            onLocationSelect={(location) => field.onChange(location)}
+                            defaultLocation={field.value}
+                          />
+                        </div>
+                      </div>
+                    </FormControl>
+                    <FormDescription>
+                      Pin the location on the map or search for a place.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="media"
                 render={({ field: { onChange, value, ...rest } }) => (
                   <FormItem>
-                    <FormLabel>Add Photos & Vlogs</FormLabel>
+                    <FormLabel>Add Photos & Videos</FormLabel>
                     <FormControl>
                         <div className="relative">
                             <Paperclip className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -228,7 +261,7 @@ export default function NewEntryPage() {
                         </div>
                     </FormControl>
                     <FormDescription>
-                      You can select multiple files to upload.
+                      You can select multiple files. Supported formats: images (JPG, PNG, GIF) and videos (MP4, WebM, MOV).
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

@@ -63,9 +63,9 @@ export default function EditEntryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const entryRef = useMemoFirebase(() => {
-    if (!firestore || !tripId || !entryId) return null;
-    return doc(firestore, 'trips', tripId as string, 'entries', entryId as string);
-  }, [firestore, tripId, entryId]);
+    if (!firestore || !tripId || !entryId || !user) return null;
+    return doc(firestore, `users/${user.uid}/trips/${tripId}/entries`, entryId as string);
+  }, [firestore, tripId, entryId, user]);
 
   const { data: entry, isLoading: isLoadingEntry } = useDoc<Entry>(entryRef);
 
@@ -270,7 +270,7 @@ export default function EditEntryPage() {
                 name="media"
                 render={({ field: { onChange, value, ...rest } }) => (
                   <FormItem>
-                    <FormLabel>Add More Photos & Vlogs</FormLabel>
+                    <FormLabel>Add More Photos & Videos</FormLabel>
                     <FormControl>
                         <div className="relative">
                             <Paperclip className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -285,7 +285,7 @@ export default function EditEntryPage() {
                         </div>
                     </FormControl>
                     <FormDescription>
-                      Select new files to add to this entry. Existing media will be kept.
+                      Select new files to add to this entry. Supported formats: images (JPG, PNG, GIF) and videos (MP4, WebM, MOV). Existing media will be kept.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

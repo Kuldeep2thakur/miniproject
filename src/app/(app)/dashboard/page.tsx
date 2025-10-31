@@ -5,7 +5,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebas
 import { PlusCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { collection, query, where } from "firebase/firestore";
+import { collection, collectionGroup, query, where } from "firebase/firestore";
 import Link from "next/link";
 import { Trip } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,7 +23,8 @@ export default function DashboardPage() {
 
     const tripsQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
-        return query(collection(firestore, 'trips'), where('ownerId', '==', user.uid));
+        // Query the current user's trips under users/{userId}/trips
+        return query(collection(firestore, `users/${user.uid}/trips`));
     }, [user, firestore]);
 
     const { data: trips, isLoading: isLoadingTrips } = useCollection<Trip>(tripsQuery);
