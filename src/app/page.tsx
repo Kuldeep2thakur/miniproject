@@ -7,6 +7,12 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Camera, Map, Share2, Sparkles, Users, Route, Globe2, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+// Dynamically import Three.js background with no SSR
+const ThreeBackground = dynamic(() => import('@/components/three-background').then(mod => ({ default: mod.ThreeBackground })), {
+  ssr: false,
+});
 
 const features = [
   {
@@ -67,19 +73,10 @@ export default function HomePage() {
 
   return (
     <div ref={rootRef} className="flex flex-col min-h-screen">
+      <ThreeBackground />
       <main className="flex-1">
         <section className="relative w-full h-[70vh] md:h-[80vh] flex items-center justify-center text-center overflow-hidden">
-          {heroImage && (
-            <Image
-              src={heroImage.imageUrl}
-              alt={heroImage.description}
-              fill
-              className="object-cover"
-              priority
-              data-ai-hint={heroImage.imageHint}
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/60" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/40" />
           <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-primary/40 blur-3xl opacity-60 blob-1" />
           <div className="pointer-events-none absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-accent/40 blur-3xl opacity-60 blob-2" />
           <div className="relative z-10 container px-4 md:px-6">

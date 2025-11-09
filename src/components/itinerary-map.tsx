@@ -74,6 +74,27 @@ export function ItineraryMap({ entries, fallbackCenter, fallbackTitle }: Itinera
         }
       }
 
+      // Add custom tooltip styles
+      const style = document.createElement('style');
+      style.textContent = `
+        .leaflet-tooltip.itinerary-tooltip {
+          background-color: rgba(0, 0, 0, 0.9) !important;
+          border: 1px solid rgba(255, 255, 255, 0.2) !important;
+          border-radius: 8px !important;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+          color: white !important;
+          padding: 0 !important;
+          max-width: 250px !important;
+        }
+        .leaflet-tooltip.itinerary-tooltip:before {
+          border-top-color: rgba(0, 0, 0, 0.9) !important;
+        }
+      `;
+      if (!document.querySelector('#itinerary-tooltip-styles')) {
+        style.id = 'itinerary-tooltip-styles';
+        document.head.appendChild(style);
+      }
+
       // Numbered divIcon markers (start/end accented)
       markers = points.map((p, i) => {
         const isStart = i === 0;
@@ -82,7 +103,51 @@ export function ItineraryMap({ entries, fallbackCenter, fallbackTitle }: Itinera
         const iconHtml = `<div style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:9999px;background:${bg};color:white;font-size:13px;font-weight:600;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)">${i + 1}</div>`;
         const divIcon = (L as any).divIcon({ html: iconHtml, className: 'itinerary-marker', iconSize: [28, 28] });
         const m = (L as any).marker([p.lat, p.lng], { icon: divIcon });
-        m.bindPopup(`<strong>${i + 1}. ${p.title || ''}</strong>`);
+        
+        // Create rich popup content
+        const popupContent = `
+          <div style="padding: 8px; min-width: 180px;">
+            <strong style="font-size: 14px; display: block; margin-bottom: 4px;">${i + 1}. ${p.title || ''}</strong>
+            ${p.locationName ? `<p style="font-size: 12px; color: #666; margin: 4px 0;">📍 ${p.locationName}</p>` : ''}
+            ${p.visitedAt ? `<p style="font-size: 11px; color: #999; margin: 4px 0;">📅 ${p.visitedAt.toLocaleDateString()}</p>` : ''}
+          </div>
+        `;
+        m.bindPopup(popupContent);
+        
+        // Create rich tooltip for hover
+        const tooltipContent = `
+          <div style="padding: 10px;">
+            <div style="font-weight: 600; font-size: 13px; margin-bottom: 6px; color: white;">
+              ${i + 1}. ${p.title || ''}
+            </div>
+            ${p.locationName ? `
+              <div style="font-size: 11px; color: #d1d5db; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+                <span>📍</span>
+                <span>${p.locationName}</span>
+              </div>
+            ` : ''}
+            ${p.visitedAt ? `
+              <div style="font-size: 11px; color: #d1d5db; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+                <span>📅</span>
+                <span>${p.visitedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              </div>
+            ` : ''}
+            ${p.content ? `
+              <div style="font-size: 11px; color: #9ca3af; margin-top: 6px; line-height: 1.4; max-height: 40px; overflow: hidden; text-overflow: ellipsis;">
+                ${p.content.substring(0, 100)}${p.content.length > 100 ? '...' : ''}
+              </div>
+            ` : ''}
+          </div>
+        `;
+        m.bindTooltip(tooltipContent, {
+          direction: 'top',
+          offset: [0, -15],
+          opacity: 1,
+          className: 'itinerary-tooltip',
+          permanent: false,
+          sticky: true
+        });
+        
         m.addTo(mapInstance);
         return m;
       });
