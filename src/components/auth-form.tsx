@@ -118,10 +118,23 @@ export function AuthForm({ formType }: AuthFormProps) {
   };
 
   const handleGoogleSignIn = async () => {
-    if (!auth) return;
+    if (!auth || !firestore) return;
     const provider = new GoogleAuthProvider();
     try {
-        await signInWithPopup(auth, provider);
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        
+        // Create or update user document in Firestore
+        const userDocRef = doc(firestore, 'users', user.uid);
+        await setDoc(userDocRef, {
+            displayName: user.displayName || 'User',
+            email: user.email,
+            photoURL: user.photoURL,
+            createdAt: serverTimestamp(),
+            privacyDefault: 'private',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }, { merge: true }); // merge: true will update existing or create new
+        
         router.push('/dashboard');
     } catch (error) {
         if (error instanceof FirebaseError && error.code !== 'auth/popup-closed-by-user') {
@@ -129,7 +142,7 @@ export function AuthForm({ formType }: AuthFormProps) {
                 type: 'manual',
                 message: 'Failed to sign in with Google. Please try again.',
             });
-            console.error(error);
+            console.error('Google Sign-In Error:', error);
         }
     }
   };
