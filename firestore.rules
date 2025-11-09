@@ -46,6 +46,11 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    // Collection group rule for 'trips' - allows querying public trips across all users
+    match /{path=**}/trips/{tripId} {
+      allow read: if isSignedIn() && resource.data.get("visibility", "") == 'public';
+    }
+    
     // Root /trips collection rules
     match /trips/{tripId} {
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
