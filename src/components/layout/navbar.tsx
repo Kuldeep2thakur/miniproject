@@ -33,9 +33,9 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 const links = [
   { href: '/', label: 'Home', exact: true, icon: Home },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/explore', label: 'Explore', icon: Compass },
   { href: '/trips', label: 'Trips', icon: Map },
   { href: '/map', label: 'Map View', icon: Globe2 },
-  { href: '/planner', label: 'Planner', icon: Compass },
 ];
 
 export function Navbar() {
