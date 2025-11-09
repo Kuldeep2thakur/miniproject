@@ -103,7 +103,12 @@ service cloud.firestore {
         return request.auth != null;
       }
 
-      allow get, list: if resource.data.get("visibility", "") == 'public' || isOwner(userId) || (resource.data.get("visibility", "") == 'shared' && resource.data.sharedWith.hasAny([request.auth.uid]));
+      // Allow reading public trips for all authenticated users (including collectionGroup queries)
+      allow get, list: if isSignedIn() && (
+        resource.data.get("visibility", "") == 'public' || 
+        isOwner(userId) || 
+        (resource.data.get("visibility", "") == 'shared' && resource.data.sharedWith.hasAny([request.auth.uid]))
+      );
 
       allow create: if isSignedIn() && isOwner(userId);
       allow update: if isOwner(userId);
