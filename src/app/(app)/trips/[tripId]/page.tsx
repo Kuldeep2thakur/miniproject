@@ -62,59 +62,20 @@ function AuthorAvatar({ authorId }: { authorId: string }) {
 }
 
 function SharedWithAvatars({ trip }: { trip: Trip }) {
-    const firestore = useFirestore();
-
-    const sharedWithQuery = useMemoFirebase(() => {
-        if (!firestore || !trip.sharedWith || trip.sharedWith.length === 0) return null;
-        // Firestore 'in' queries are limited to 30 elements in total for a single query.
-        return query(collection(firestore, 'users'), where('__name__', 'in', trip.sharedWith.slice(0, 30)));
-    }, [firestore, trip.sharedWith]);
-
-    const { data: sharedUsers } = useCollection<TripUser>(sharedWithQuery);
-
-    if (!sharedUsers || sharedUsers.length === 0) {
+    // Disabled user lookup due to Firestore security rules not allowing user listing
+    // TODO: Implement alternative approach (e.g., store user info in trip document)
+    
+    if (!trip.sharedWith || trip.sharedWith.length === 0) {
         return <p className="text-sm text-muted-foreground">Only you</p>;
     }
+    
+    // Show count of shared users instead of fetching their details
+    const sharedCount = trip.sharedWith.length;
 
     return (
-        <div className="flex items-center gap-2">
-             <div className="flex -space-x-2">
-                <TooltipProvider>
-                    {sharedUsers.slice(0,5).map(user => {
-                        const userName = user.displayName || user.email || user.id;
-
-                        return (
-                            <Tooltip key={user.id}>
-                                <TooltipTrigger asChild>
-                                    <Avatar className="border-2 border-background h-8 w-8">
-                                        {user.photoURL && <AvatarImage src={user.photoURL} alt={userName} />}
-                                        <AvatarFallback>{getInitials(userName)}</AvatarFallback>
-                                    </Avatar>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{userName}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        );
-                    })}
-                    {trip.sharedWith && trip.sharedWith.length > 5 && (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Avatar className="border-2 border-background h-8 w-8">
-                                    <AvatarFallback>+{trip.sharedWith.length - 5}</AvatarFallback>
-                                </Avatar>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>...and {trip.sharedWith.length - 5} more</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    )}
-                </TooltipProvider>
-            </div>
-            <span className="text-sm text-muted-foreground">
-                {(trip.sharedWith?.length ?? 0)} member{(trip.sharedWith?.length ?? 0) > 1 ? 's' : ''}
-            </span>
-        </div>
+        <p className="text-sm text-muted-foreground">
+            Shared with {sharedCount} {sharedCount === 1 ? 'person' : 'people'}
+        </p>
     );
 }
 
