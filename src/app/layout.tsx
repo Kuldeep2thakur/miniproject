@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase';
+import { Navbar } from '@/components/layout/navbar';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -22,8 +23,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn(inter.variable, "font-body")}>
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossOrigin=""
+        />
+      </head>
+      <body suppressHydrationWarning className={cn(inter.className, "font-body")}>
         <FirebaseClientProvider>
+          <Navbar />
           {children}
         </FirebaseClientProvider>
         <Toaster />

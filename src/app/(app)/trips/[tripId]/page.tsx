@@ -9,16 +9,20 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { MediaDisplay } from '@/components/media-display';
 import { MapView } from '@/components/map-view';
+import { ItineraryMap } from '@/components/itinerary-map';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Edit, Globe, Lock, MapPin, PlusCircle, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Edit, Globe, Lock, MapPin, PlusCircle, Users, MoreVertical, Share2, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { EntryGallery } from '@/components/entry-gallery';
 
 const getInitials = (name: string) => name ? name.split(' ').map(n => n[0]).join('') : '';
 
@@ -108,7 +112,7 @@ function SharedWithAvatars({ trip }: { trip: Trip }) {
                 </TooltipProvider>
             </div>
             <span className="text-sm text-muted-foreground">
-                {trip.sharedWith.length} member{trip.sharedWith.length > 1 ? 's' : ''}
+                {(trip.sharedWith?.length ?? 0)} member{(trip.sharedWith?.length ?? 0) > 1 ? 's' : ''}
             </span>
         </div>
     );
@@ -149,11 +153,62 @@ export default function TripPage() {
     
     const { data: entries, isLoading: isLoadingEntries } = useCollection<Entry>(entriesQuery);
 
+    const onDeleteTrip = async () => {
+        if (!tripRef) return;
+        const confirmDelete = window.confirm('Delete this trip and all its entries? This cannot be undone.');
+        if (!confirmDelete) return;
+        try {
+            const { deleteDoc, getDocs } = await import('firebase/firestore');
+            const { collection } = await import('firebase/firestore');
+            // delete entries under trip
+            const entriesSnap = await getDocs(collection(firestore!, `users/${user!.uid}/trips/${tripId}/entries`));
+            const batchModule = await import('firebase/firestore');
+            const batch = (batchModule as any).writeBatch(firestore!);
+            entriesSnap.forEach(docSnap => batch.delete(docSnap.ref));
+            await batch.commit();
+            // delete trip doc
+            await deleteDoc(tripRef);
+            if (typeof window !== 'undefined') window.alert('Trip deleted');
+            router.push('/dashboard');
+        } catch (e: any) {
+            if (typeof window !== 'undefined') window.alert(`Failed to delete trip: ${e?.message || ''}`);
+        }
+    };
+
+    const onShareTrip = async () => {
+        try {
+            const origin = typeof window !== 'undefined' ? window.location.origin : '';
+            const link = `${origin}/trips/${tripId}`;
+            await navigator.clipboard.writeText(link);
+            if (typeof window !== 'undefined') window.alert(`Share link copied: ${link}`);
+        } catch (e: any) {
+            if (typeof window !== 'undefined') window.alert('Could not copy link');
+        }
+    };
+
     useEffect(() => {
         if (!isUserLoading && !user) {
             router.push('/login');
         }
     }, [user, isUserLoading, router]);
+
+    // Animate entry cards on load
+    useEffect(() => {
+        const prefersReduced = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (prefersReduced) return;
+        let ctx: any;
+        (async () => {
+            const { gsap } = await import('gsap');
+            const root = document;
+            const cards = root.querySelectorAll('.entry-card');
+            if (!cards.length) return;
+            ctx = gsap.context(() => {
+                gsap.set(cards, { y: 16, opacity: 0 });
+                gsap.to(cards, { opacity: 1, y: 0, duration: 0.45, stagger: 0.06, ease: 'power2.out' });
+            });
+        })();
+        return () => ctx?.revert?.();
+    }, [entries?.length]);
 
     const placeholderPhoto = trip?.coverPhotoId ? PlaceHolderImages.find(p => p.id === trip.coverPhotoId) : PlaceHolderImages.find(p => p.id === 'trip-cover-1');
     const coverPhotoURL = trip?.coverPhotoURL || placeholderPhoto?.imageUrl;
@@ -208,35 +263,76 @@ export default function TripPage() {
                     <h1 className="font-headline text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">{trip.title}</h1>
                     <div className="flex items-center text-lg mt-2 text-gray-200">
                         <Calendar className="h-5 w-5 mr-2" />
-                        {trip.startDate instanceof Date ? format(trip.startDate, 'MMM dd, yyyy') : trip.startDate} - {trip.endDate instanceof Date ? format(trip.endDate, 'MMM dd, yyyy') : trip.endDate}
+                        {typeof (trip.startDate as any) === 'string' ? (trip.startDate as any) : format(trip.startDate as any, 'MMM dd, yyyy')} - {typeof (trip.endDate as any) === 'string' ? (trip.endDate as any) : format(trip.endDate as any, 'MMM dd, yyyy')}
                     </div>
                 </div>
                 {isOwner && (
                     <div className="absolute top-4 right-4 flex gap-2">
-                        <Button variant="secondary" size="sm">
-                            <Edit className="mr-2 h-4 w-4" /> Edit Trip
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="capitalize flex items-center gap-1.5">
+                                <VisibilityIcon visibility={trip?.visibility} />
+                                {trip?.visibility}
+                            </Badge>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" aria-label="More options">
+                                  <MoreVertical className="h-5 w-5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {trip?.visibility === 'shared' && (
+                                  <DropdownMenuItem onClick={onShareTrip} className="flex items-center gap-2">
+                                    <Share2 className="h-4 w-4" /> Share
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={onDeleteTrip} className="text-destructive flex items-center gap-2">
+                                  <Trash2 className="h-4 w-4" /> Delete Trip
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     </div>
                 )}
-                 <div className="absolute top-4 left-4">
-                    <Button variant="secondary" size="sm" asChild>
-                        <Link href="/dashboard"><ArrowLeft className="mr-2 h-4 w-4" />Back</Link>
-                    </Button>
-                </div>
             </header>
             <main className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <div className="md:col-span-2">
+                        <EntryGallery entries={entries ?? undefined} />
                         <div className="flex justify-between items-center mb-6">
                              <h2 className="text-2xl font-bold font-headline">Trip Diary</h2>
-                             {canAddEntry && (
-                                <Button asChild>
-                                    <Link href={`/trips/${tripId}/new`}>
-                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                        Add Entry
-                                    </Link>
-                                </Button>
-                             )}
+                             <div className="flex items-center gap-2">
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="secondary">View Trip Map</Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-5xl">
+                                    <DialogHeader>
+                                      <DialogTitle>Trip Map</DialogTitle>
+                                    </DialogHeader>
+                                    {entries && entries.length > 0 ? (
+                                      <ItineraryMap
+                                        entries={entries}
+                                        fallbackCenter={trip?.location?.coordinates ? [trip.location.coordinates.lat, trip.location.coordinates.lng] : undefined}
+                                        fallbackTitle={trip?.title}
+                                      />
+                                    ) : (
+                                      <ItineraryMap
+                                        entries={[]}
+                                        fallbackCenter={trip?.location?.coordinates ? [trip.location.coordinates.lat, trip.location.coordinates.lng] : undefined}
+                                        fallbackTitle={trip?.title}
+                                      />
+                                    )}
+                                  </DialogContent>
+                                </Dialog>
+                                {canAddEntry && (
+                                  <Button asChild>
+                                      <Link href={`/trips/${tripId}/new`}>
+                                          <PlusCircle className="mr-2 h-4 w-4" />
+                                          Add Entry
+                                      </Link>
+                                  </Button>
+                                )}
+                             </div>
                         </div>
 
                         {isLoadingEntries ? (
@@ -253,7 +349,7 @@ export default function TripPage() {
                                     const canEditEntry = isOwner || (entry.authorId === user?.uid);
 
                                     return (
-                                        <div key={entry.id} className="bg-card p-4 rounded-lg shadow-sm border space-y-4">
+                                        <div key={entry.id} className="entry-card bg-card p-4 rounded-lg shadow-sm border space-y-4">
                                             <div className="space-y-4">
                                                 {entry.media && entry.media.length > 0 && (
                                                     <MediaDisplay media={entry.media} title={entry.title} />

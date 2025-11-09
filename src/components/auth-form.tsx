@@ -14,6 +14,7 @@ import { useAuth, useFirestore, useUser, createUserWithEmailAndPassword, signInW
 import { useEffect, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { Mail, Lock, User, Sparkles, LogIn, UserPlus, MapPin } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -134,28 +135,47 @@ export function AuthForm({ formType }: AuthFormProps) {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-      <Card className="mx-auto max-w-sm w-full shadow-2xl">
-        <CardHeader>
-          <CardTitle className="text-2xl font-headline">
-            {isLogin ? 'Welcome Back' : 'Create an Account'}
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/10 p-4">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-accent/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      </div>
+      <Card className="mx-auto max-w-md w-full shadow-2xl border-2 border-primary/10 bg-background/95 backdrop-blur-sm relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <CardHeader className="space-y-3 pb-6">
+          <div className="flex items-center justify-center mb-2">
+            <div className="p-3 rounded-full bg-gradient-to-br from-primary to-primary/60 shadow-lg">
+              <MapPin className="h-8 w-8 text-white" />
+            </div>
+          </div>
+          <CardTitle className="text-3xl font-headline text-center bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            {isLogin ? 'Welcome Back!' : 'Join WanderLust'}
           </CardTitle>
-          <CardDescription>
-            {isLogin ? "Enter your email below to login to your account" : "Enter your details to create an account with WanderLust"}
+          <CardDescription className="text-center text-base">
+            {isLogin ? "Continue your journey with us" : "Start your travel adventure today"}
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4">
+        <CardContent className="grid gap-6 px-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
               {!isLogin && (
                 <FormField
                   control={form.control}
                   name="fullName"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
+                    <FormItem className="group">
+                      <FormLabel className="flex items-center gap-2 font-medium group-hover:text-primary transition-colors">
+                        <User className="h-4 w-4" />
+                        Full Name
+                      </FormLabel>
                       <FormControl>
-                        <Input placeholder="Asha Traveler" {...field} />
+                        <div className="relative">
+                          <Input 
+                            placeholder="John Doe" 
+                            {...field} 
+                            className="pl-10 transition-all duration-200 focus:scale-[1.02] focus:border-primary focus:ring-2 focus:ring-primary/20" 
+                          />
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -166,10 +186,21 @@ export function AuthForm({ formType }: AuthFormProps) {
                 control={form.control}
                 name="email"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
+                  <FormItem className="group">
+                    <FormLabel className="flex items-center gap-2 font-medium group-hover:text-primary transition-colors">
+                      <Mail className="h-4 w-4" />
+                      Email Address
+                    </FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="asha@example.com" {...field} />
+                      <div className="relative">
+                        <Input 
+                          type="email" 
+                          placeholder="you@example.com" 
+                          {...field} 
+                          className="pl-10 transition-all duration-200 focus:scale-[1.02] focus:border-primary focus:ring-2 focus:ring-primary/20" 
+                        />
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -179,48 +210,93 @@ export function AuthForm({ formType }: AuthFormProps) {
                 control={form.control}
                 name="password"
                 render={({ field }) => (
-                  <FormItem>
-                    <div className="flex items-center">
-                        <FormLabel>Password</FormLabel>
+                  <FormItem className="group">
+                    <div className="flex items-center justify-between">
+                        <FormLabel className="flex items-center gap-2 font-medium group-hover:text-primary transition-colors">
+                          <Lock className="h-4 w-4" />
+                          Password
+                        </FormLabel>
                         {isLogin && (
-                            <Link href="#" className="ml-auto inline-block text-sm underline">
-                            Forgot your password?
+                            <Link href="#" className="text-sm text-primary hover:underline transition-all hover:scale-105">
+                            Forgot password?
                             </Link>
                         )}
                     </div>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <div className="relative">
+                        <Input 
+                          type="password" 
+                          placeholder="••••••••" 
+                          {...field} 
+                          className="pl-10 transition-all duration-200 focus:scale-[1.02] focus:border-primary focus:ring-2 focus:ring-primary/20" 
+                        />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               {form.formState.errors.root && (
-                <FormMessage>{form.formState.errors.root.message}</FormMessage>
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 animate-in fade-in slide-in-from-top-2">
+                  <FormMessage className="text-destructive font-medium">{form.formState.errors.root.message}</FormMessage>
+                </div>
               )}
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Processing...' : (isLogin ? 'Login' : 'Create account')}
+              <Button 
+                type="submit" 
+                className="w-full h-11 text-base font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-300 hover:scale-105 hover:shadow-xl group" 
+                disabled={form.formState.isSubmitting}
+              >
+                {form.formState.isSubmitting ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    {isLogin ? (
+                      <>
+                        <LogIn className="mr-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                        Sign In
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+                        Create Account
+                      </>
+                    )}
+                  </>
+                )}
               </Button>
             </form>
           </Form>
-          <div className="relative">
+          <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+                <span className="w-full border-t border-primary/20" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+            <div className="relative flex justify-center text-sm uppercase">
+                <span className="bg-background px-3 text-muted-foreground font-medium">Or continue with</span>
             </div>
           </div>
-          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
-            <GoogleIcon className="mr-2" />
-            {isLogin ? 'Login with Google' : 'Sign up with Google'}
+          <Button 
+            variant="outline" 
+            className="w-full h-11 border-2 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 hover:scale-105 group" 
+            onClick={handleGoogleSignIn}
+          >
+            <GoogleIcon className="mr-2 group-hover:scale-110 transition-transform" />
+            <span className="font-medium">{isLogin ? 'Sign in with Google' : 'Sign up with Google'}</span>
           </Button>
         </CardContent>
-        <CardFooter className="text-center text-sm">
-          {isLogin ? "Don't have an account?" : "Already have an account?"}
-          <Link href={isLogin ? "/signup" : "/login"} className="underline ml-1">
-            {isLogin ? 'Sign up' : 'Login'}
-          </Link>
+        <CardFooter className="flex justify-center text-center text-sm pb-6 pt-4 border-t border-primary/10">
+          <p className="text-muted-foreground">
+            {isLogin ? "Don't have an account?" : "Already have an account?"}
+            <Link 
+              href={isLogin ? "/signup" : "/login"} 
+              className="ml-2 font-semibold text-primary hover:underline transition-all hover:scale-105 inline-block"
+            >
+              {isLogin ? 'Sign up' : 'Sign in'}
+            </Link>
+          </p>
         </CardFooter>
       </Card>
     </div>

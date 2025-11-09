@@ -2,6 +2,7 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  reactStrictMode: false, // Disable to prevent Leaflet double-initialization in dev
   typescript: {
     ignoreBuildErrors: true,
   },

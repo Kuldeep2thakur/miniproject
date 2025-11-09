@@ -12,6 +12,13 @@ export type Trip = {
   sharedWith?: string[];
   ownerId?: string;
   tripRef?: DocumentReference
+  location?: {
+    name: string;
+    coordinates: {
+      lat: number;
+      lng: number;
+    };
+  };
 };
 
 export type User = {
